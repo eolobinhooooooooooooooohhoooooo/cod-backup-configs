@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace CodBackupConfig
@@ -33,6 +34,7 @@ namespace CodBackupConfig
         ChoiceBox _cbSnap;
         BorderPanel _listBorder;
         ListBox _lb;
+        int _lbPrevSel = -1;
 
         List<GameInfo> _games;
         int _selGame = -1;
@@ -75,6 +77,21 @@ namespace CodBackupConfig
                 SelectGame(i < 0 ? 0 : i);
             };
             FormClosed += (s, e) => Prefs.Save();
+        }
+
+        [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr h, int attr, ref int v, int size);
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            // dark window caption so the chrome matches the theme
+            try
+            {
+                int one = 1;
+                if (DwmSetWindowAttribute(Handle, 20, ref one, 4) != 0) // Win10 20H1+ / Win11
+                    DwmSetWindowAttribute(Handle, 19, ref one, 4);      // older builds
+            }
+            catch { }
         }
 
         // -------------------------------------------------------------- layout
@@ -228,10 +245,18 @@ namespace CodBackupConfig
             _lb.DrawItem += Lb_DrawItem;
             _lb.SelectedIndexChanged += (s, e) =>
             {
+                int cur = _lb.SelectedIndex;
+                int prev = _lbPrevSel;
+                _lbPrevSel = cur;
+                // the framework occasionally skips the deselect repaint of the
+                // previous row, leaving a ghost highlight until full activation
+                if (prev >= 0 && prev != cur) _lb.Invalidate();
                 var a = SelAcct();
                 if (a != null && !_txtTarget.Focused) _txtTarget.Text = a.Id;
                 UpdateLockButton();
             };
+            _lb.GotFocus += (s, e) => _lb.Invalidate();
+            _lb.LostFocus += (s, e) => _lb.Invalidate();
             _listBorder.Controls.Add(_lb);
             Controls.Add(_listBorder);
         }
@@ -418,6 +443,8 @@ namespace CodBackupConfig
             var a = SelAcct();
             if (a != null) _txtTarget.Text = a.Id;
             UpdateLockButton();
+            _lbPrevSel = _lb.SelectedIndex;
+            _lb.Invalidate();
         }
 
         void UpdateLockButton()
@@ -642,7 +669,7 @@ namespace CodBackupConfig
         {
             Graphics g = e.Graphics;
             bool sel = e.Index == _lb.SelectedIndex;
-            using (var back = new SolidBrush(sel ? Ui.AccentDim : Ui.Panel))
+            using (var back = new SolidBrush(sel ? Ui.SelRow : Ui.Panel))
                 g.FillRectangle(back, e.Bounds);
             if (sel)
                 using (var b = new SolidBrush(Ui.Accent))

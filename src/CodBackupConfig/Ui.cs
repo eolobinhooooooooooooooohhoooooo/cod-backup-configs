@@ -14,6 +14,7 @@ namespace CodBackupConfig
         public static readonly Color Faint     = Color.FromArgb(75, 78, 86);
         public static readonly Color Accent    = Color.FromArgb(1, 89, 179);
         public static readonly Color AccentDim = Color.FromArgb(15, 36, 60);
+        public static readonly Color SelRow    = Color.FromArgb(14, 25, 40);
         public static readonly Color Error     = Color.FromArgb(200, 16, 46);
 
         // Geist Mono is a web font; Consolas is the closest thing Windows ships

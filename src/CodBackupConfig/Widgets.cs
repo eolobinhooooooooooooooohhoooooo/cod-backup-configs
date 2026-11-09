@@ -170,10 +170,23 @@ namespace CodBackupConfig
             if (_found && _cover != null)
             {
                 CoverCrop(g, _cover, r);
-                using var lg = new LinearGradientBrush(r,
-                    Color.FromArgb(246, Ui.Bg), Color.FromArgb(160, Ui.Bg),
-                    LinearGradientMode.Horizontal);
-                g.FillRectangle(lg, r);
+                using (var lg = new LinearGradientBrush(r, Ui.Bg, Ui.Bg, LinearGradientMode.Horizontal))
+                {
+                    // keep the text zone dark, let a slice of art show mid-card,
+                    // darken the tail so the cover logo stops competing
+                    var blend = new ColorBlend
+                    {
+                        Colors = new[]
+                        {
+                            Color.FromArgb(248, Ui.Bg),
+                            Color.FromArgb(165, Ui.Bg),
+                            Color.FromArgb(238, Ui.Bg),
+                        },
+                        Positions = new[] { 0f, 0.45f, 1f },
+                    };
+                    lg.InterpolationColors = blend;
+                    g.FillRectangle(lg, r);
+                }
             }
 
             using (var p = new Pen(Selected ? Ui.Accent : _hot ? Ui.Dim : Ui.Line))
@@ -191,7 +204,7 @@ namespace CodBackupConfig
                     new RectangleF(12, 40, Width - 24, 14), sf);
 
                 TextRenderer.DrawText(g,
-                    string.Format(L10n.T("card.accounts"), _accts), Ui.Small,
+                    string.Format(L10n.T(_accts == 1 ? "card.account" : "card.accounts"), _accts), Ui.Small,
                     new Rectangle(12, Height - 28, Width - 24, 16), Ui.Accent,
                     TextFormatFlags.NoPadding);
             }
@@ -340,11 +353,15 @@ namespace CodBackupConfig
                 f.Click -= OnOwnerClick;
                 f.Deactivate -= _deact;
             }
+            Rectangle was = _shell.Bounds;
             _shell.Controls.Remove(_lb);
             Parent.Controls.Remove(_shell);
             _shell.Dispose();
             _shell = null;
             _lb = null;
+            // repaint whatever the open dropdown was covering
+            Parent?.Invalidate(was);
+            Invalidate();
         }
 
         protected override void OnPaint(PaintEventArgs e)

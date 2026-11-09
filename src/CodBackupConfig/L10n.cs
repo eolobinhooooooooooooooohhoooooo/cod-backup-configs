@@ -20,7 +20,8 @@ namespace CodBackupConfig
             ["sec.backups"]    = "BACKUPS",
 
             ["card.notfound"]  = "NOT FOUND ON THIS PC",
-            ["card.accounts"]  = "{0} ACCOUNT(S)",
+            ["card.account"]   = "{0} ACCOUNT",
+            ["card.accounts"]  = "{0} ACCOUNTS",
             ["card.browse"]    = "choose folder…",
 
             ["legend.note"]    = "platform is a guess from the id shape — label only",
@@ -84,7 +85,8 @@ namespace CodBackupConfig
             ["sec.backups"]    = "BACKUPS",
 
             ["card.notfound"]  = "NÃO ENCONTRADO NESTE PC",
-            ["card.accounts"]  = "{0} CONTA(S)",
+            ["card.account"]   = "{0} CONTA",
+            ["card.accounts"]  = "{0} CONTAS",
             ["card.browse"]    = "escolher pasta…",
 
             ["legend.note"]    = "a plataforma é um chute pelo formato do id — só um rótulo",
