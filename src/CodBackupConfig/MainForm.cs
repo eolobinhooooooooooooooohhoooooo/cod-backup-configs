@@ -15,9 +15,9 @@ namespace CodBackupConfig
         const int W = 940;
         const int GAP = 12;
 
-        const int COL1 = 24;
-        const int COL2 = 276;
-        const int COL3 = 608;
+        const int PANEL_W = (W - 2 * M - GAP) / 2;
+        const int PANEL_H = 146;
+        const int PAD = 14;
 
         ToolTip _tt;
         System.Windows.Forms.Timer _blink;
@@ -29,10 +29,11 @@ namespace CodBackupConfig
         GameCard[] _cards;
         LineButton _btnRefresh, _btnBackup, _btnRestore, _btnLock, _btnPlayers, _btnBackups;
         TickBox _chkReplace;
-        Label _lblName, _lblSnap, _lblTarget;
         TextBox _txtName, _txtTarget;
         ChoiceBox _cbSnap;
-        BorderPanel _listBorder;
+        BorderPanel _listBorder, _savePanel, _restorePanel;
+        Label _saveTag, _saveHint, _saveNote, _restoreTag, _restoreHint;
+        Panel _footerLine;
         ListBox _lb;
         int _lbPrevSel = -1;
 
@@ -254,25 +255,12 @@ namespace CodBackupConfig
                 var a = SelAcct();
                 if (a != null && !_txtTarget.Focused) _txtTarget.Text = a.Id;
                 UpdateLockButton();
+                UpdateSaveHint();
             };
             _lb.GotFocus += (s, e) => _lb.Invalidate();
             _lb.LostFocus += (s, e) => _lb.Invalidate();
             _listBorder.Controls.Add(_lb);
             Controls.Add(_listBorder);
-        }
-
-        Label FieldLabel(Point p)
-        {
-            var l = new Label
-            {
-                AutoSize = true,
-                Font = Ui.Label,
-                ForeColor = Ui.Faint,
-                BackColor = Color.Transparent,
-                Location = p,
-            };
-            Controls.Add(l);
-            return l;
         }
 
         LineButton MakeButton(Point p, Size s)
@@ -284,22 +272,35 @@ namespace CodBackupConfig
 
         void BuildBackupsSection()
         {
-            _secBackups = new SectionLabel { Location = new Point(M, 390) };
+            _secBackups = new SectionLabel { Location = new Point(M, 378) };
             Controls.Add(_secBackups);
 
-            _lblName = FieldLabel(new Point(COL1, 410));
-            _lblSnap = FieldLabel(new Point(COL2, 410));
-            _lblTarget = FieldLabel(new Point(COL3, 410));
-
+            // left box: saving a backup of the selected account
+            _savePanel = ActionPanel(new Point(M, 396));
+            _saveTag = PanelTag(_savePanel, "sec.save.tag");
+            _saveHint = PanelHint(_savePanel);
             _txtName = new TextBox
             {
-                Location = new Point(COL1, 426), Size = new Size(240, 30),
+                Location = new Point(PAD, 50), Size = new Size(PANEL_W - 2 * PAD, 26),
                 BackColor = Ui.Panel, ForeColor = Ui.Text, Font = Ui.Body,
                 BorderStyle = BorderStyle.FixedSingle,
             };
+            _savePanel.Controls.Add(_txtName);
+            _saveNote = new Label
+            {
+                AutoSize = true, Font = Ui.Small, ForeColor = Ui.Faint,
+                BackColor = Color.Transparent, Location = new Point(PAD, 90),
+            };
+            _savePanel.Controls.Add(_saveNote);
+            _btnBackup = PanelButton(_savePanel, DoBackup);
+
+            // right box: restoring an earlier snapshot
+            _restorePanel = ActionPanel(new Point(M + PANEL_W + GAP, 396));
+            _restoreTag = PanelTag(_restorePanel, "sec.restore.tag");
+            _restoreHint = PanelHint(_restorePanel);
             _cbSnap = new ChoiceBox
             {
-                Location = new Point(COL2, 426), Size = new Size(320, 30),
+                Location = new Point(PAD, 50), Size = new Size(PANEL_W - 2 * PAD, 26),
                 Font = Ui.Body,
             };
             _cbSnap.Changed += (i) =>
@@ -307,57 +308,133 @@ namespace CodBackupConfig
                 if (!_txtTarget.Focused && i >= 0 && i < _snaps.Count)
                     _txtTarget.Text = _snaps[i].AccountId;
             };
+            _restorePanel.Controls.Add(_cbSnap);
+            int tW = PANEL_W - 2 * PAD - 210 - 8;
             _txtTarget = new TextBox
             {
-                Location = new Point(COL3, 426), Size = new Size(284, 30),
+                Location = new Point(PAD, 84), Size = new Size(tW, 26),
                 BackColor = Ui.Panel, ForeColor = Ui.Text, Font = Ui.Body,
                 BorderStyle = BorderStyle.FixedSingle,
             };
-            Controls.Add(_txtName);
-            Controls.Add(_cbSnap);
-            Controls.Add(_txtTarget);
-
-            _btnBackup = MakeButton(new Point(COL1, 470), new Size(200, 32));
-            _btnBackup.Click += (s, e) => DoBackup();
-
-            _btnRestore = MakeButton(new Point(COL1 + 200 + GAP, 470), new Size(220, 32));
-            _btnRestore.Click += (s, e) => DoRestore();
-
+            _restorePanel.Controls.Add(_txtTarget);
             _chkReplace = new TickBox
             {
-                Font = Ui.Small,
-                Location = new Point(COL1 + 200 + GAP + 220 + 16, 478),
-                Size = new Size(232, 16),
+                Font = Ui.Small, BackColor = Ui.Panel,
+                Location = new Point(PAD + tW + 8, 89), Size = new Size(210, 16),
             };
-            Controls.Add(_chkReplace);
+            _restorePanel.Controls.Add(_chkReplace);
+            _btnRestore = PanelButton(_restorePanel, DoRestore);
 
-            _btnLock = MakeButton(new Point(COL1, 514), new Size(170, 32));
+            _btnLock = MakeButton(new Point(M, 556), new Size(170, 28));
             _btnLock.Click += (s, e) => DoLock();
 
-            _btnPlayers = MakeButton(new Point(COL1 + 170 + GAP, 514), new Size(210, 32));
+            _btnPlayers = MakeButton(new Point(M + 170 + GAP, 556), new Size(210, 28));
             _btnPlayers.Click += (s, e) => OpenFolder(SelGame()?.Resolved);
 
-            _btnBackups = MakeButton(new Point(COL1 + 170 + GAP + 210 + GAP, 514), new Size(190, 32));
+            _btnBackups = MakeButton(new Point(M + 170 + GAP + 210 + GAP, 556), new Size(190, 28));
             _btnBackups.Click += (s, e) => OpenFolder(BackupStore.BackupsRoot);
+        }
+
+        BorderPanel ActionPanel(Point p)
+        {
+            var b = new BorderPanel
+            {
+                Location = p, Size = new Size(PANEL_W, PANEL_H),
+                BackColor = Ui.Panel,
+            };
+            Controls.Add(b);
+            return b;
+        }
+
+        Label PanelTag(BorderPanel p, string key)
+        {
+            var l = new Label
+            {
+                AutoSize = true, Font = Ui.Label, ForeColor = Ui.Faint,
+                BackColor = Color.Transparent, Text = T(key),
+                Location = new Point(PAD, 12),
+            };
+            p.Controls.Add(l);
+            return l;
+        }
+
+        Label PanelHint(BorderPanel p)
+        {
+            var l = new Label
+            {
+                AutoSize = true, Font = Ui.Small, ForeColor = Ui.Dim,
+                BackColor = Color.Transparent, Location = new Point(PAD, 30),
+            };
+            p.Controls.Add(l);
+            return l;
+        }
+
+        LineButton PanelButton(BorderPanel p, Action act)
+        {
+            var b = new LineButton
+            {
+                Font = Ui.Body, Location = new Point(PAD, 116),
+                Size = new Size(PANEL_W - 2 * PAD, 28),
+            };
+            b.Click += (s, e) => act();
+            p.Controls.Add(b);
+            return b;
         }
 
         void BuildFooter()
         {
-            Controls.Add(new Panel
+            _footerLine = new Panel
             {
-                Location = new Point(M, 562),
+                Location = new Point(M, 596),
                 Size = new Size(W - 2 * M, 1),
                 BackColor = Ui.Line,
-            });
+            };
+            Controls.Add(_footerLine);
             _status = new Label
             {
                 AutoSize = true,
                 Font = Ui.Small,
                 ForeColor = Ui.Dim,
                 BackColor = Color.Transparent,
-                Location = new Point(M, 574),
+                Location = new Point(M, 608),
             };
             Controls.Add(_status);
+        }
+
+        // stretch or shrink the window so the list only takes as much
+        // space as it has accounts in it
+        void LayoutBottom()
+        {
+            int rows = Math.Min(Math.Max(_accounts.Count, 1), 4);
+            _listBorder.Height = rows * 26 + 8;
+
+            int secY = _listBorder.Bottom + 14;
+            _secBackups.Location = new Point(M, secY);
+
+            int pY = secY + 18;
+            _savePanel.Location = new Point(M, pY);
+            _restorePanel.Location = new Point(M + PANEL_W + GAP, pY);
+
+            int uY = pY + PANEL_H + 14;
+            _btnLock.Location = new Point(M, uY);
+            _btnPlayers.Location = new Point(M + 170 + GAP, uY);
+            _btnBackups.Location = new Point(M + 170 + GAP + 210 + GAP, uY);
+
+            int lY = uY + 28 + 12;
+            _footerLine.Location = new Point(M, lY);
+            _status.Location = new Point(M, lY + 12);
+
+            float f = 1f;
+            try { using (var gr = CreateGraphics()) f = gr.DpiX / 96f; } catch { }
+            ClientSize = new Size((int)Math.Round(W * f), (int)Math.Round(lY + 42 * f));
+        }
+
+        void UpdateSaveHint()
+        {
+            var a = SelAcct();
+            _saveHint.Text = a == null
+                ? T("sec.save.noselect")
+                : string.Format(T("sec.save.hint"), a.Id, a.Platform, a.FileCount);
         }
 
         // -------------------------------------------------------------- state
@@ -432,6 +509,8 @@ namespace CodBackupConfig
             var a = SelAcct();
             if (a != null) _txtTarget.Text = a.Id;
             UpdateLockButton();
+            UpdateSaveHint();
+            LayoutBottom();
             _lbPrevSel = _lb.SelectedIndex;
             _lb.Invalidate();
         }
@@ -613,9 +692,10 @@ namespace CodBackupConfig
             _btnBackups.Text = T("btn.backups");
             UpdateLockButton();
 
-            _lblName.Text = T("lbl.name");
-            _lblSnap.Text = T("lbl.snapshot");
-            _lblTarget.Text = T("lbl.target");
+            _saveTag.Text = T("sec.save.tag");
+            _restoreTag.Text = T("sec.restore.tag");
+            _restoreHint.Text = T("sec.restore.hint");
+            _saveNote.Text = T("sec.save.note");
             _txtName.PlaceholderText = T("ph.name");
             _txtTarget.PlaceholderText = T("ph.target");
             _chkReplace.Text = T("chk.replace");

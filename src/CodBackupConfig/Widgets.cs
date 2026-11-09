@@ -277,7 +277,9 @@ namespace CodBackupConfig
 
         void Open()
         {
-            if (Items.Count == 0 || Parent == null || _shell != null) return;
+            if (Items.Count == 0 || _shell != null) return;
+            var host = FindForm();
+            if (host == null) return;
 
             _shell = new Panel { Padding = new Padding(1), BackColor = Ui.Bg };
             _shell.Paint += (s, e) =>
@@ -321,19 +323,15 @@ namespace CodBackupConfig
             _shell.Size = new Size(Width, h);
 
             // dock below us, or above us if the window would clip it
-            Point at = PointToScreen(new Point(0, Height));
-            bool below = at.Y + 2 + h <= Parent.ClientSize.Height;
+            Point ho = host.PointToClient(PointToScreen(new Point(0, 0)));
+            bool below = ho.Y + Height + 2 + h <= host.ClientSize.Height;
             _shell.Location = below
-                ? new Point(at.X, at.Y + 2)
-                : new Point(at.X, at.Y - 2 - h);
-            Parent.Controls.Add(_shell);
+                ? new Point(ho.X, ho.Y + Height + 2)
+                : new Point(ho.X, ho.Y - 2 - h);
+            host.Controls.Add(_shell);
             _shell.BringToFront();
-            Form f = Parent as Form;
-            if (f != null)
-            {
-                f.Click += OnOwnerClick;
-                f.Deactivate += _deact;
-            }
+            host.Click += OnOwnerClick;
+            host.Deactivate += _deact;
         }
 
         void OnOwnerClick(object s, EventArgs e)
@@ -347,20 +345,20 @@ namespace CodBackupConfig
         void Close()
         {
             if (_shell == null) return;
-            var f = Parent as Form;
-            if (f != null)
+            var host = FindForm();
+            if (host != null)
             {
-                f.Click -= OnOwnerClick;
-                f.Deactivate -= _deact;
+                host.Click -= OnOwnerClick;
+                host.Deactivate -= _deact;
             }
             Rectangle was = _shell.Bounds;
             _shell.Controls.Remove(_lb);
-            Parent.Controls.Remove(_shell);
+            host?.Controls.Remove(_shell);
             _shell.Dispose();
             _shell = null;
             _lb = null;
             // repaint whatever the open dropdown was covering
-            Parent?.Invalidate(was);
+            host?.Invalidate(was);
             Invalidate();
         }
 
