@@ -17,14 +17,24 @@
 
   <!-- art ships inside the exe, nothing is read from disk at runtime -->
   <ItemGroup>
-    <EmbeddedResource Include="..\..\assets\mw4.jpg"      Condition="Exists('..\..\assets\mw4.jpg')"      LogicalName="img/mw4.jpg" />
-    <EmbeddedResource Include="..\..\assets\bo7.jpg"      Condition="Exists('..\..\assets\bo7.jpg')"      LogicalName="img/bo7.jpg" />
-    <EmbeddedResource Include="..\..\assets\bo6.jpg"      Condition="Exists('..\..\assets\bo6.jpg')"      LogicalName="img/bo6.jpg" />
-    <EmbeddedResource Include="..\..\assets\battlenet.png" Condition="Exists('..\..\assets\battlenet.png')" LogicalName="img/battlenet.png" />
-    <EmbeddedResource Include="..\..\assets\steam.png"    Condition="Exists('..\..\assets\steam.png')"    LogicalName="img/steam.png" />
-    <EmbeddedResource Include="..\..\assets\xbox.png"     Condition="Exists('..\..\assets\xbox.png')"     LogicalName="img/xbox.png" />
+    <EmbeddedResource Include="..\..\assets\mw4.jpg"       Condition="Exists('..\..\assets\mw4.jpg')"       LogicalName="img/mw4.jpg" />
+    <EmbeddedResource Include="..\..\assets\bo7.jpg"       Condition="Exists('..\..\assets\bo7.jpg')"       LogicalName="img/bo7.jpg" />
+    <EmbeddedResource Include="..\..\assets\bo6.jpg"       Condition="Exists('..\..\assets\bo6.jpg')"       LogicalName="img/bo6.jpg" />
+    <EmbeddedResource Include="..\..\assets\kit\platform-battlenet.png" Condition="Exists('..\..\assets\kit\platform-battlenet.png')" LogicalName="img/platform-battlenet.png" />
+    <EmbeddedResource Include="..\..\assets\kit\platform-steam.png"     Condition="Exists('..\..\assets\kit\platform-steam.png')"     LogicalName="img/platform-steam.png" />
+    <EmbeddedResource Include="..\..\assets\kit\platform-xbox.png"      Condition="Exists('..\..\assets\kit\platform-xbox.png')"      LogicalName="img/platform-xbox.png" />
+    <EmbeddedResource Include="..\..\assets\kit\logo-bo6.png"   Condition="Exists('..\..\assets\kit\logo-bo6.png')"   LogicalName="img/logo-bo6.png" />
+    <EmbeddedResource Include="..\..\assets\kit\logo-bo7.png"   Condition="Exists('..\..\assets\kit\logo-bo7.png')"   LogicalName="img/logo-bo7.png" />
+    <EmbeddedResource Include="..\..\assets\kit\logo-mw4.png"   Condition="Exists('..\..\assets\kit\logo-mw4.png')"   LogicalName="img/logo-mw4.png" />
+    <EmbeddedResource Include="..\..\assets\kit\ic-backup.png"  Condition="Exists('..\..\assets\kit\ic-backup.png')"  LogicalName="img/ic-backup.png" />
+    <EmbeddedResource Include="..\..\assets\kit\ic-restore.png" Condition="Exists('..\..\assets\kit\ic-restore.png')" LogicalName="img/ic-restore.png" />
+    <EmbeddedResource Include="..\..\assets\kit\ic-lock.png"    Condition="Exists('..\..\assets\kit\ic-lock.png')"    LogicalName="img/ic-lock.png" />
+    <EmbeddedResource Include="..\..\assets\kit\ic-unlock.png"  Condition="Exists('..\..\assets\kit\ic-unlock.png')"  LogicalName="img/ic-unlock.png" />
+    <EmbeddedResource Include="..\..\assets\kit\ic-refresh.png" Condition="Exists('..\..\assets\kit\ic-refresh.png')" LogicalName="img/ic-refresh.png" />
+    <EmbeddedResource Include="..\..\assets\kit\ic-folder.png"  Condition="Exists('..\..\assets\kit\ic-folder.png')"  LogicalName="img/ic-folder.png" />
     <EmbeddedResource Include="..\..\assets\flag-en.png"  Condition="Exists('..\..\assets\flag-en.png')"  LogicalName="img/flag-en.png" />
     <EmbeddedResource Include="..\..\assets\flag-pt.png"  Condition="Exists('..\..\assets\flag-pt.png')"  LogicalName="img/flag-pt.png" />
+    <EmbeddedResource Include="..\..\assets\kit\fonts\HitmarkerCondensed-Bold.ttf" Condition="Exists('..\..\assets\kit\fonts\HitmarkerCondensed-Bold.ttf')" LogicalName="font/HitmarkerCondensed-Bold.ttf" />
   </ItemGroup>
 
 </Project>

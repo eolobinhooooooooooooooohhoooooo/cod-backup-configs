@@ -21,7 +21,21 @@ namespace CodBackupConfig
         static Font Mono(float size, FontStyle style = FontStyle.Regular) =>
             new Font("Consolas", size, style, GraphicsUnit.Point);
 
-        public static readonly Font Title = Mono(11f, FontStyle.Bold);
+        // hitmarker (activision) for display headers; falls back to consolas
+        // when the memory font registration failed in Program.Main
+        public static Font Head(float size)
+        {
+            try
+            {
+                var f = new Font("Hitmarker Condensed", size, FontStyle.Bold, GraphicsUnit.Point);
+                if (f.Name.Contains("Hitmarker")) return f;
+                f.Dispose();
+            }
+            catch { }
+            return Mono(size, FontStyle.Bold);
+        }
+
+        public static readonly Font Title = Head(12.5f);
         public static readonly Font CardName = Mono(10f, FontStyle.Bold);
         public static readonly Font Label = Mono(8.5f, FontStyle.Bold);
         public static readonly Font Body  = Mono(9.5f);

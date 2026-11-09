@@ -80,6 +80,10 @@ namespace CodBackupConfig
             FormClosed += (s, e) => Prefs.Save();
         }
 
+        // film grain background; backcolor stays flat for resize-flash protection
+        protected override void OnPaintBackground(PaintEventArgs e) =>
+            e.Graphics.FillRectangle(GrainFx.Brush, ClientRectangle);
+
         [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr h, int attr, ref int v, int size);
 
         protected override void OnHandleCreated(EventArgs e)
@@ -170,11 +174,11 @@ namespace CodBackupConfig
                 Controls.Add(_cards[i]);
             }
 
-            // platform legend (logos ship inside the exe)
+            // platform legend (official square marks, even gap between items)
             int y = 198;
-            AddPlatformLogo("battlenet.png", M, y, "battle.net");
-            AddPlatformLogo("steam.png", M + 134, y, "steam");
-            AddPlatformLogo("xbox.png", M + 238, y, "xbox");
+            AddPlatformLogo(M, y, "battle.net");
+            AddPlatformLogo(M + 112, y, "steam");
+            AddPlatformLogo(M + 193, y, "xbox");
 
             _legendNote = new Label
             {
@@ -188,16 +192,16 @@ namespace CodBackupConfig
             Controls.Add(_legendNote);
         }
 
-        void AddPlatformLogo(string asset, int x, int y, string name)
+        void AddPlatformLogo(int x, int y, string name)
         {
             var pb = new PictureBox
             {
                 Location = new Point(x, y),
-                Size = new Size(32, 18),
+                Size = new Size(18, 18),
                 BackColor = Color.Transparent,
             };
-            var src = Assets.Img(asset);
-            if (src != null) pb.Image = Img.Scale(src, 32, 18);
+            var src = Assets.Img("platform-" + name.Replace(".", "") + ".png");
+            if (src != null) pb.Image = Img.Scale(src, 18, 18);
             Controls.Add(pb);
 
             Controls.Add(new Label
@@ -207,7 +211,7 @@ namespace CodBackupConfig
                 Font = Ui.Small,
                 ForeColor = Ui.Dim,
                 BackColor = Color.Transparent,
-                Location = new Point(x + 38, y + 3),
+                Location = new Point(x + 24, y + 3),
             });
         }
 
@@ -222,6 +226,7 @@ namespace CodBackupConfig
                 Location = new Point(W - M - 88, 226),
                 Size = new Size(88, 26),
             };
+            _btnRefresh.Icon = Assets.Img("ic-refresh.png");
             _btnRefresh.Click += (s, e) => { Rescan(); Status(T("st.ready")); };
             Controls.Add(_btnRefresh);
 
@@ -293,6 +298,7 @@ namespace CodBackupConfig
             };
             _savePanel.Controls.Add(_saveNote);
             _btnBackup = PanelButton(_savePanel, DoBackup);
+            _btnBackup.Icon = Assets.Img("ic-backup.png");
 
             // right box: restoring an earlier snapshot
             _restorePanel = ActionPanel(new Point(M + PANEL_W + GAP, 396));
@@ -324,14 +330,17 @@ namespace CodBackupConfig
             };
             _restorePanel.Controls.Add(_chkReplace);
             _btnRestore = PanelButton(_restorePanel, DoRestore);
+            _btnRestore.Icon = Assets.Img("ic-restore.png");
 
             _btnLock = MakeButton(new Point(M, 556), new Size(170, 28));
             _btnLock.Click += (s, e) => DoLock();
 
             _btnPlayers = MakeButton(new Point(M + 170 + GAP, 556), new Size(210, 28));
+            _btnPlayers.Icon = Assets.Img("ic-folder.png");
             _btnPlayers.Click += (s, e) => OpenFolder(SelGame()?.Resolved);
 
             _btnBackups = MakeButton(new Point(M + 170 + GAP + 210 + GAP, 556), new Size(190, 28));
+            _btnBackups.Icon = Assets.Img("ic-folder.png");
             _btnBackups.Click += (s, e) => OpenFolder(BackupStore.BackupsRoot);
         }
 
@@ -519,7 +528,9 @@ namespace CodBackupConfig
         {
             var a = SelAcct();
             bool locked = a != null && a.LockedCount > a.FileCount / 2;
+            // icon matches the action the button will perform
             _btnLock.Text = T(locked ? "btn.lockoff" : "btn.lockon");
+            _btnLock.Icon = Assets.Img(locked ? "ic-unlock.png" : "ic-lock.png");
         }
 
         void PopulateSnapshots()

@@ -11,6 +11,7 @@ namespace CodBackupConfig
         bool _hot;
         protected bool Hot => _hot;
         public bool Highlight { get; set; }
+        public Bitmap Icon { get; set; }
 
         public LineButton()
         {
@@ -33,6 +34,19 @@ namespace CodBackupConfig
             using (var p = new Pen(Highlight || _hot ? Ui.Accent : Ui.Line))
                 g.DrawRectangle(p, 0, 0, Width - 1, Height - 1);
             Color fore = !Enabled ? Ui.Faint : _hot && !Highlight ? Ui.Accent : Ui.Text;
+            if (Icon != null)
+            {
+                // 14x14 icon on the left, label centered in the rest
+                int iw = 14, ix = 10;
+                var old = g.InterpolationMode;
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                g.DrawImage(Icon, new Rectangle(ix, (Height - iw) / 2, iw, iw));
+                g.InterpolationMode = old;
+                TextRenderer.DrawText(g, Text, Font,
+                    new Rectangle(ix + iw + 6, 0, Width - ix - iw - 16, Height), fore,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+                return;
+            }
             TextRenderer.DrawText(g, Text, Font, ClientRectangle, fore,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         }
@@ -89,7 +103,7 @@ namespace CodBackupConfig
         public SectionLabel()
         {
             AutoSize = true;
-            Font = Ui.Label;
+            Font = Ui.Head(10f);
             ForeColor = Ui.Faint;
             BackColor = Color.Transparent;
         }
@@ -101,6 +115,7 @@ namespace CodBackupConfig
     {
         GameInfo _g;
         Bitmap _cover;
+        Bitmap _logo;
         bool _hot;
         bool _found;
         int _accts;
@@ -119,6 +134,7 @@ namespace CodBackupConfig
             BackColor = Ui.Panel;
             Cursor = Cursors.Hand;
             _cover = Assets.Img(g.Key + ".jpg");
+            _logo = Assets.Img("logo-" + g.Key + ".png");
 
             _browse = new Button
             {
@@ -179,7 +195,7 @@ namespace CodBackupConfig
                         Colors = new[]
                         {
                             Color.FromArgb(248, Ui.Bg),
-                            Color.FromArgb(165, Ui.Bg),
+                            Color.FromArgb(195, Ui.Bg),
                             Color.FromArgb(238, Ui.Bg),
                         },
                         Positions = new[] { 0f, 0.45f, 1f },
@@ -192,8 +208,12 @@ namespace CodBackupConfig
             using (var p = new Pen(Selected ? Ui.Accent : _hot ? Ui.Dim : Ui.Line))
                 g.DrawRectangle(p, 0, 0, Width - 1, Height - 1);
 
-            TextRenderer.DrawText(g, _g.Name, Ui.CardName,
-                new Rectangle(12, 14, Width - 24, 18), Ui.Text, TextFormatFlags.NoPadding);
+            // the official lockup is the title; plain name is the fallback
+            if (_found && _logo != null)
+                Img.Fit(g, _logo, new Rectangle(12, 8, Width - 24, Height - 50));
+            else
+                TextRenderer.DrawText(g, _g.Name, Ui.CardName,
+                    new Rectangle(12, 14, Width - 24, 18), Ui.Text, TextFormatFlags.NoPadding);
 
             if (_found)
             {
@@ -201,7 +221,7 @@ namespace CodBackupConfig
                 sf.Trimming = StringTrimming.EllipsisCharacter;
                 using var b = new SolidBrush(Ui.Dim);
                 g.DrawString(_g.Resolved, Ui.Small, b,
-                    new RectangleF(12, 40, Width - 24, 14), sf);
+                    new RectangleF(12, Height - 36, Width - 24, 14), sf);
 
                 TextRenderer.DrawText(g,
                     string.Format(L10n.T(_accts == 1 ? "card.account" : "card.accounts"), _accts), Ui.Small,
