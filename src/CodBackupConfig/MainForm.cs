@@ -11,26 +11,26 @@ namespace CodBackupConfig
     public class MainForm : Form
     {
         const int M = 24;
-        const int W = 920;
+        const int W = 940;
         const int GAP = 12;
 
         const int COL1 = 24;
-        const int COL2 = 286;
-        const int COL3 = 618;
+        const int COL2 = 276;
+        const int COL3 = 608;
 
         ToolTip _tt;
         System.Windows.Forms.Timer _blink;
         bool _dotOn = true;
         Panel _dot;
-        Label _title, _secGame, _secAccounts, _secBackups;
+        Label _title, _ver, _secGame, _secAccounts, _secBackups;
         Label _legendNote, _footer, _status;
         FlagButton _btnEn, _btnPt;
         GameCard[] _cards;
         LineButton _btnRefresh, _btnBackup, _btnRestore, _btnLock, _btnPlayers, _btnBackups;
-        CheckBox _chkReplace;
+        TickBox _chkReplace;
         Label _lblName, _lblSnap, _lblTarget;
         TextBox _txtName, _txtTarget;
-        ComboBox _cbSnap;
+        ChoiceBox _cbSnap;
         BorderPanel _listBorder;
         ListBox _lb;
 
@@ -43,13 +43,14 @@ namespace CodBackupConfig
 
         public MainForm()
         {
+            AutoScaleMode = AutoScaleMode.Dpi;
             Text = "Cod Backup Configs";
             BackColor = Ui.Bg;
             Font = Ui.Body;
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(W, 624);
+            ClientSize = new Size(W, 608);
             DoubleBuffered = true;
 
             _tt = new ToolTip { AutoPopDelay = 10000, InitialDelay = 250, ShowAlways = true };
@@ -80,7 +81,7 @@ namespace CodBackupConfig
 
         void BuildTopBar()
         {
-            _dot = new Panel { Location = new Point(M, 17), Size = new Size(6, 6) };
+            _dot = new Panel { Location = new Point(M, 22), Size = new Size(6, 6) };
             _dot.Paint += (s, e) =>
             {
                 using var b = new SolidBrush(_dotOn ? Ui.Accent : Ui.Faint);
@@ -94,14 +95,25 @@ namespace CodBackupConfig
                 Font = Ui.Title,
                 ForeColor = Ui.Text,
                 BackColor = Color.Transparent,
-                Location = new Point(M + 18, 10),
+                Location = new Point(M + 18, 14),
             };
             Controls.Add(_title);
 
+            _ver = new Label
+            {
+                AutoSize = true,
+                Text = "v1.0.0",
+                Font = Ui.Small,
+                ForeColor = Ui.Faint,
+                BackColor = Color.Transparent,
+                Location = new Point(M + 200, 19),
+            };
+            Controls.Add(_ver);
+
             _btnPt = new FlagButton
             {
-                Width = 64, Height = 30,
-                Location = new Point(W - M - 64, 8),
+                Width = 60, Height = 28,
+                Location = new Point(W - M - 60, 10),
                 Font = Ui.Small,
                 Flag = Assets.Img("flag-pt.png"),
             };
@@ -109,8 +121,8 @@ namespace CodBackupConfig
 
             _btnEn = new FlagButton
             {
-                Width = 64, Height = 30,
-                Location = new Point(W - M - 136, 8),
+                Width = 60, Height = 28,
+                Location = new Point(W - M - 128, 10),
                 Font = Ui.Small,
                 Flag = Assets.Img("flag-en.png"),
             };
@@ -122,7 +134,7 @@ namespace CodBackupConfig
 
         void BuildGameSection()
         {
-            _secGame = new SectionLabel { Location = new Point(M, 54) };
+            _secGame = new SectionLabel { Location = new Point(M, 56) };
             Controls.Add(_secGame);
 
             int cw = (W - 2 * M - 2 * GAP) / 3;
@@ -133,7 +145,7 @@ namespace CodBackupConfig
                 _cards[i] = new GameCard(_games[i])
                 {
                     Location = new Point(M + i * (cw + GAP), 74),
-                    Size = new Size(cw, 116),
+                    Size = new Size(cw, 108),
                 };
                 _cards[i].Clicked += () => SelectGame(idx);
                 _cards[i].BrowseClick += BrowseFor;
@@ -141,10 +153,10 @@ namespace CodBackupConfig
             }
 
             // platform legend (logos ship inside the exe)
-            int y = 200;
-            AddPlatformLogo("battlenet.png", M, y, "battle.net", M + 20, y + 1);
-            AddPlatformLogo("steam.png", M + 118, y, "steam", M + 138, y + 1);
-            AddPlatformLogo("xbox.png", M + 216, y, "xbox", M + 236, y + 1);
+            int y = 198;
+            AddPlatformLogo("battlenet.png", M, y, "battle.net");
+            AddPlatformLogo("steam.png", M + 134, y, "steam");
+            AddPlatformLogo("xbox.png", M + 238, y, "xbox");
 
             _legendNote = new Label
             {
@@ -152,22 +164,22 @@ namespace CodBackupConfig
                 ForeColor = Ui.Faint,
                 BackColor = Color.Transparent,
                 TextAlign = ContentAlignment.MiddleRight,
-                Location = new Point(W - M - 380, y + 1),
-                Size = new Size(380, 14),
+                Location = new Point(W - M - 420, y + 2),
+                Size = new Size(420, 14),
             };
             Controls.Add(_legendNote);
         }
 
-        void AddPlatformLogo(string asset, int lx, int ly, string name, int nx, int ny)
+        void AddPlatformLogo(string asset, int x, int y, string name)
         {
             var pb = new PictureBox
             {
-                Location = new Point(lx, ly),
-                Size = new Size(14, 14),
+                Location = new Point(x, y),
+                Size = new Size(32, 18),
                 BackColor = Color.Transparent,
             };
             var src = Assets.Img(asset);
-            if (src != null) pb.Image = Img.Scale(src, 14, 14);
+            if (src != null) pb.Image = Img.Scale(src, 32, 18);
             Controls.Add(pb);
 
             Controls.Add(new Label
@@ -177,19 +189,19 @@ namespace CodBackupConfig
                 Font = Ui.Small,
                 ForeColor = Ui.Dim,
                 BackColor = Color.Transparent,
-                Location = new Point(nx, ny),
+                Location = new Point(x + 38, y + 3),
             });
         }
 
         void BuildAccountsSection()
         {
-            _secAccounts = new SectionLabel { Location = new Point(M, 230) };
+            _secAccounts = new SectionLabel { Location = new Point(M, 232) };
             Controls.Add(_secAccounts);
 
             _btnRefresh = new LineButton
             {
                 Font = Ui.Small,
-                Location = new Point(W - M - 88, 224),
+                Location = new Point(W - M - 88, 226),
                 Size = new Size(88, 26),
             };
             _btnRefresh.Click += (s, e) => { Rescan(); Status(T("st.ready")); };
@@ -197,8 +209,8 @@ namespace CodBackupConfig
 
             _listBorder = new BorderPanel
             {
-                Location = new Point(M, 250),
-                Size = new Size(W - 2 * M, 148),
+                Location = new Point(M, 252),
+                Size = new Size(W - 2 * M, 116),
                 BackColor = Ui.Panel,
             };
             _lb = new ListBox
@@ -209,7 +221,7 @@ namespace CodBackupConfig
                 ForeColor = Ui.Text,
                 Font = Ui.Body,
                 DrawMode = DrawMode.OwnerDrawFixed,
-                ItemHeight = 22,
+                ItemHeight = 26,
                 IntegralHeight = false,
                 SelectionMode = SelectionMode.One,
             };
@@ -247,29 +259,32 @@ namespace CodBackupConfig
 
         void BuildBackupsSection()
         {
-            _secBackups = new SectionLabel { Location = new Point(M, 412) };
+            _secBackups = new SectionLabel { Location = new Point(M, 390) };
             Controls.Add(_secBackups);
 
-            _lblName = FieldLabel(new Point(COL1, 432));
-            _lblSnap = FieldLabel(new Point(COL2, 432));
-            _lblTarget = FieldLabel(new Point(COL3, 432));
+            _lblName = FieldLabel(new Point(COL1, 410));
+            _lblSnap = FieldLabel(new Point(COL2, 410));
+            _lblTarget = FieldLabel(new Point(COL3, 410));
 
             _txtName = new TextBox
             {
-                Location = new Point(COL1, 448), Size = new Size(250, 28),
+                Location = new Point(COL1, 426), Size = new Size(240, 30),
                 BackColor = Ui.Panel, ForeColor = Ui.Text, Font = Ui.Body,
                 BorderStyle = BorderStyle.FixedSingle,
             };
-            _cbSnap = new ComboBox
+            _cbSnap = new ChoiceBox
             {
-                Location = new Point(COL2, 448), Size = new Size(320, 28),
-                DropDownStyle = ComboBoxStyle.DropDownList,
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Ui.Panel, ForeColor = Ui.Text, Font = Ui.Body,
+                Location = new Point(COL2, 426), Size = new Size(320, 30),
+                Font = Ui.Body,
+            };
+            _cbSnap.Changed += (i) =>
+            {
+                if (!_txtTarget.Focused && i >= 0 && i < _snaps.Count)
+                    _txtTarget.Text = _snaps[i].AccountId;
             };
             _txtTarget = new TextBox
             {
-                Location = new Point(COL3, 448), Size = new Size(278, 28),
+                Location = new Point(COL3, 426), Size = new Size(284, 30),
                 BackColor = Ui.Panel, ForeColor = Ui.Text, Font = Ui.Body,
                 BorderStyle = BorderStyle.FixedSingle,
             };
@@ -277,29 +292,27 @@ namespace CodBackupConfig
             Controls.Add(_cbSnap);
             Controls.Add(_txtTarget);
 
-            _btnBackup = MakeButton(new Point(COL1, 486), new Size(190, 34));
+            _btnBackup = MakeButton(new Point(COL1, 470), new Size(200, 32));
             _btnBackup.Click += (s, e) => DoBackup();
 
-            _btnRestore = MakeButton(new Point(COL1 + 190 + GAP, 486), new Size(210, 34));
+            _btnRestore = MakeButton(new Point(COL1 + 200 + GAP, 470), new Size(220, 32));
             _btnRestore.Click += (s, e) => DoRestore();
 
-            _chkReplace = new CheckBox
+            _chkReplace = new TickBox
             {
-                AutoSize = true,
                 Font = Ui.Small,
-                ForeColor = Ui.Dim,
-                BackColor = Color.Transparent,
-                Location = new Point(COL1 + 190 + GAP + 210 + 16, 494),
+                Location = new Point(COL1 + 200 + GAP + 220 + 16, 478),
+                Size = new Size(232, 16),
             };
             Controls.Add(_chkReplace);
 
-            _btnLock = MakeButton(new Point(COL1, 526), new Size(170, 34));
+            _btnLock = MakeButton(new Point(COL1, 514), new Size(170, 32));
             _btnLock.Click += (s, e) => DoLock();
 
-            _btnPlayers = MakeButton(new Point(COL1 + 170 + GAP, 526), new Size(210, 34));
+            _btnPlayers = MakeButton(new Point(COL1 + 170 + GAP, 514), new Size(210, 32));
             _btnPlayers.Click += (s, e) => OpenFolder(SelGame()?.Resolved);
 
-            _btnBackups = MakeButton(new Point(COL1 + 170 + GAP + 210 + GAP, 526), new Size(200, 34));
+            _btnBackups = MakeButton(new Point(COL1 + 170 + GAP + 210 + GAP, 514), new Size(190, 32));
             _btnBackups.Click += (s, e) => OpenFolder(BackupStore.BackupsRoot);
         }
 
@@ -307,7 +320,7 @@ namespace CodBackupConfig
         {
             Controls.Add(new Panel
             {
-                Location = new Point(M, 572),
+                Location = new Point(M, 562),
                 Size = new Size(W - 2 * M, 1),
                 BackColor = Ui.Line,
             });
@@ -317,7 +330,7 @@ namespace CodBackupConfig
                 Font = Ui.Small,
                 ForeColor = Ui.Dim,
                 BackColor = Color.Transparent,
-                Location = new Point(M, 584),
+                Location = new Point(M, 574),
             };
             Controls.Add(_status);
 
@@ -327,7 +340,7 @@ namespace CodBackupConfig
                 ForeColor = Ui.Faint,
                 BackColor = Color.Transparent,
                 TextAlign = ContentAlignment.MiddleCenter,
-                Location = new Point(0, 602),
+                Location = new Point(0, 592),
                 Size = new Size(W, 14),
             };
             Controls.Add(_footer);
@@ -417,24 +430,26 @@ namespace CodBackupConfig
         void PopulateSnapshots()
         {
             var g = SelGame();
+            string oldText = null;
+            int oldSel = _cbSnap.SelectedIndex;
+            if (oldSel >= 0 && oldSel < _snaps.Count)
+                oldText = SnapText(_snaps[oldSel]);
+
             _snaps = g != null ? BackupStore.ListSnapshots(g.Key) : new List<Snapshot>();
 
-            string prev = _cbSnap.SelectedItem as string;
-            _cbSnap.BeginUpdate();
             _cbSnap.Items.Clear();
             foreach (var s in _snaps)
                 _cbSnap.Items.Add(SnapText(s));
-            if (_snaps.Count == 0)
-                _cbSnap.Items.Add(T("ph.none"));
 
-            int idx = 0;
-            if (!string.IsNullOrEmpty(prev))
+            int idx = _cbSnap.Items.Count > 0 ? 0 : -1;
+            if (!string.IsNullOrEmpty(oldText))
             {
+                idx = -1;
                 for (int i = 0; i < _cbSnap.Items.Count; i++)
-                    if (_cbSnap.Items[i].ToString() == prev) { idx = i; break; }
+                    if (_cbSnap.Items[i] == oldText) { idx = i; break; }
             }
             _cbSnap.SelectedIndex = idx;
-            _cbSnap.EndUpdate();
+            _cbSnap.Invalidate();
         }
 
         static string SnapText(Snapshot s) =>
@@ -567,6 +582,7 @@ namespace CodBackupConfig
         {
             Text = "Cod Backup Configs";
             _title.Text = T("title");
+            _ver.Location = new Point(_title.Right + 10, 19);
             _secGame.Text = T("sec.game");
             _secAccounts.Text = T("sec.accounts");
             _secBackups.Text = T("sec.backups");
@@ -588,6 +604,8 @@ namespace CodBackupConfig
             _txtTarget.PlaceholderText = T("ph.target");
             _chkReplace.Text = T("chk.replace");
             _legendNote.Text = T("legend.note");
+            _cbSnap.Placeholder = T("ph.none");
+            _cbSnap.Invalidate();
 
             FillList();
             PopulateSnapshots();
@@ -626,35 +644,30 @@ namespace CodBackupConfig
             bool sel = e.Index == _lb.SelectedIndex;
             using (var back = new SolidBrush(sel ? Ui.AccentDim : Ui.Panel))
                 g.FillRectangle(back, e.Bounds);
+            if (sel)
+                using (var b = new SolidBrush(Ui.Accent))
+                    g.FillRectangle(b, e.Bounds.X, e.Bounds.Y, 2, e.Bounds.Height);
 
             if (e.Index >= _accounts.Count) // placeholder row
             {
                 TextRenderer.DrawText(g, _lb.Items[e.Index].ToString(), Ui.Small,
-                    new Point(e.Bounds.X + 10, e.Bounds.Y + 4), Ui.Faint,
+                    new Point(e.Bounds.X + 12, e.Bounds.Y + 6), Ui.Faint,
                     TextFormatFlags.NoPadding);
                 return;
             }
 
             var a = _accounts[e.Index];
-            int x = e.Bounds.X + 10, y = e.Bounds.Y + 4;
-            Seg(g, a.Id, Ui.Text, y, ref x);
-            x += 10;
-            Seg(g, a.Platform,
-                a.Platform == "unknown" || a.Platform.EndsWith("?") ? Ui.Faint : Ui.Accent, y, ref x);
-            x += 10;
-            Seg(g, $"{a.FileCount} files", sel ? Ui.Text : Ui.Dim, y, ref x);
+            int x = e.Bounds.X + 12, y = e.Bounds.Y + 6;
+            Col(g, a.Id, Ui.Text, x, y);
+            Col(g, a.Platform,
+                a.Platform == "unknown" || a.Platform.EndsWith("?") ? Ui.Faint : Ui.Accent,
+                x + 210, y);
+            Col(g, a.FileCount + " files", sel ? Ui.Text : Ui.Dim, x + 430, y);
             if (a.LockedCount > 0)
-            {
-                x += 10;
-                Seg(g, $"{a.LockedCount} locked", sel ? Ui.Text : Ui.Faint, y, ref x);
-            }
+                Col(g, a.LockedCount + " locked", sel ? Ui.Text : Ui.Faint, x + 560, y);
         }
 
-        void Seg(Graphics g, string s, Color c, int y, ref int x)
-        {
-            int w = TextRenderer.MeasureText(g, s, Ui.Body).Width;
+        static void Col(Graphics g, string s, Color c, int x, int y) =>
             TextRenderer.DrawText(g, s, Ui.Body, new Point(x, y), c, TextFormatFlags.NoPadding);
-            x += w;
-        }
     }
 }
