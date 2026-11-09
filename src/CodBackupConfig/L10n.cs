@@ -44,7 +44,7 @@ namespace CodBackupConfig
 
             ["list.empty"]     = "(no accounts found — run the game once with each platform you use, then press refresh)",
 
-            ["st.ready"]       = "ready.",
+            ["st.ready"]       = "",
             ["st.noacct"]      = "select an account first",
             ["st.nofolders"]   = "no players folder found — launch the game once, then press refresh",
             ["st.backupok"]    = "backup saved: {0}",
@@ -57,8 +57,6 @@ namespace CodBackupConfig
             ["st.badname"]     = "backup name: letters, numbers, space, - and _ only (max 40)",
             ["st.nosnap"]      = "no snapshot selected",
             ["err"]            = "error: ",
-
-            ["footer"]         = "copy only · nothing is ever deleted · everything stays on this pc",
 
             ["tip.game"]       = "Pick which Call of Duty to work with. The game keeps one folder per logged-in account inside its players directory; this app only copies files between those folders and your backups.",
             ["tip.browse"]     = "Auto-detection failed? Pick the players folder manually.",
@@ -109,7 +107,7 @@ namespace CodBackupConfig
 
             ["list.empty"]     = "(nenhuma conta encontrada — rode o jogo uma vez em cada plataforma que você usa e depois clique em atualizar)",
 
-            ["st.ready"]       = "pronto.",
+            ["st.ready"]       = "",
             ["st.noacct"]      = "selecione uma conta primeiro",
             ["st.nofolders"]   = "pasta de players não encontrada — abra o jogo uma vez e depois clique em atualizar",
             ["st.backupok"]    = "backup salvo: {0}",
@@ -122,8 +120,6 @@ namespace CodBackupConfig
             ["st.badname"]     = "nome do backup: letras, números, espaço, - e _ apenas (máx. 40)",
             ["st.nosnap"]      = "nenhum snapshot selecionado",
             ["err"]            = "erro: ",
-
-            ["footer"]         = "só copia · nada é apagado · tudo fica neste pc",
 
             ["tip.game"]       = "Escolha qual Call of Duty usar. O jogo guarda uma pasta por conta logada dentro do diretório de players; este app só copia arquivos entre essas pastas e seus backups.",
             ["tip.browse"]     = "A detecção automática falhou? Escolha a pasta de players manualmente.",

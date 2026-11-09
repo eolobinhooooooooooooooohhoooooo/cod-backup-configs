@@ -24,7 +24,7 @@ namespace CodBackupConfig
         bool _dotOn = true;
         Panel _dot;
         Label _title, _ver, _secGame, _secAccounts, _secBackups;
-        Label _legendNote, _footer, _status;
+        Label _legendNote, _status;
         FlagButton _btnEn, _btnPt;
         GameCard[] _cards;
         LineButton _btnRefresh, _btnBackup, _btnRestore, _btnLock, _btnPlayers, _btnBackups;
@@ -358,17 +358,6 @@ namespace CodBackupConfig
                 Location = new Point(M, 574),
             };
             Controls.Add(_status);
-
-            _footer = new Label
-            {
-                Font = Ui.Small,
-                ForeColor = Ui.Faint,
-                BackColor = Color.Transparent,
-                TextAlign = ContentAlignment.MiddleCenter,
-                Location = new Point(0, 592),
-                Size = new Size(W, 14),
-            };
-            Controls.Add(_footer);
         }
 
         // -------------------------------------------------------------- state
@@ -660,7 +649,6 @@ namespace CodBackupConfig
             foreach (var c in _cards) c.Invalidate();
 
             Status(T("st.ready"));
-            _footer.Text = T("footer");
         }
 
         // -------------------------------------------------------------- list draw
