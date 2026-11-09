@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <AssemblyName>Cod Backup Configs</AssemblyName>
+    <RootNamespace>CodBackupConfig</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
+    <Version>1.0.0</Version>
+    <Product>Cod Backup Configs</Product>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <!-- art ships inside the exe, nothing is read from disk at runtime -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\assets\mw4.jpg"      Condition="Exists('..\..\assets\mw4.jpg')"      LogicalName="img/mw4.jpg" />
+    <EmbeddedResource Include="..\..\assets\bo7.jpg"      Condition="Exists('..\..\assets\bo7.jpg')"      LogicalName="img/bo7.jpg" />
+    <EmbeddedResource Include="..\..\assets\bo6.jpg"      Condition="Exists('..\..\assets\bo6.jpg')"      LogicalName="img/bo6.jpg" />
+    <EmbeddedResource Include="..\..\assets\battlenet.png" Condition="Exists('..\..\assets\battlenet.png')" LogicalName="img/battlenet.png" />
+    <EmbeddedResource Include="..\..\assets\steam.png"    Condition="Exists('..\..\assets\steam.png')"    LogicalName="img/steam.png" />
+    <EmbeddedResource Include="..\..\assets\xbox.png"     Condition="Exists('..\..\assets\xbox.png')"     LogicalName="img/xbox.png" />
+    <EmbeddedResource Include="..\..\assets\flag-en.png"  Condition="Exists('..\..\assets\flag-en.png')"  LogicalName="img/flag-en.png" />
+    <EmbeddedResource Include="..\..\assets\flag-pt.png"  Condition="Exists('..\..\assets\flag-pt.png')"  LogicalName="img/flag-pt.png" />
+  </ItemGroup>
+
+</Project>
