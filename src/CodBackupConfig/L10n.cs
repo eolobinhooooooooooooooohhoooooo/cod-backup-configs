@@ -24,8 +24,6 @@ namespace CodBackupConfig
             ["card.accounts"]  = "{0} ACCOUNTS",
             ["card.browse"]    = "choose folder…",
 
-            ["legend.note"]    = "platform is a guess from the id shape — label only",
-
             ["btn.refresh"]    = "REFRESH",
             ["btn.backup"]     = "BACKUP ACCOUNT",
             ["btn.restore"]    = "RESTORE SNAPSHOT",
@@ -46,6 +44,8 @@ namespace CodBackupConfig
             ["chk.replace"]    = "replace existing files",
 
             ["list.empty"]     = "(no accounts found — run the game once with each platform you use, then press refresh)",
+            ["list.files"]     = "{0} FILES",
+            ["list.locked"]    = "{0} LOCKED",
 
             ["st.ready"]       = "",
             ["st.noacct"]      = "select an account first",
@@ -73,7 +73,7 @@ namespace CodBackupConfig
             ["tip.snapshot"]   = "Pick a snapshot made earlier to restore it.",
             ["tip.target"]     = "Numeric id of the account to restore into. Must match a folder inside the players directory. Type a new id to stage settings for a fresh account.",
             ["tip.replace"]    = "Only for restoring: tick to overwrite files that already exist in the target account.",
-            ["tip.list"]       = "One row per account the game remembers on this pc. Platform column is a best-effort guess from the id.",
+            ["list.tip"]       = "One row per account the game remembers on this pc. FILES = everything in the account folder; LOCKED = read-only s.1.0.* settings files. Platform is a best-effort guess from the id shape — label only.",
             ["tip.en"]         = "Interface in English",
             ["tip.pt"]         = "Interface em Português",
         };
@@ -89,8 +89,6 @@ namespace CodBackupConfig
             ["card.account"]   = "{0} CONTA",
             ["card.accounts"]  = "{0} CONTAS",
             ["card.browse"]    = "escolher pasta…",
-
-            ["legend.note"]    = "a plataforma é um chute pelo formato do id — só um rótulo",
 
             ["btn.refresh"]    = "ATUALIZAR",
             ["btn.backup"]     = "BACKUP DA CONTA",
@@ -112,6 +110,8 @@ namespace CodBackupConfig
             ["chk.replace"]    = "substituir arquivos existentes",
 
             ["list.empty"]     = "(nenhuma conta encontrada — rode o jogo uma vez em cada plataforma que você usa e depois clique em atualizar)",
+            ["list.files"]     = "{0} ARQUIVOS",
+            ["list.locked"]    = "{0} TRAVADOS",
 
             ["st.ready"]       = "",
             ["st.noacct"]      = "selecione uma conta primeiro",
@@ -139,7 +139,7 @@ namespace CodBackupConfig
             ["tip.snapshot"]   = "Escolha um snapshot feito antes para restaurar.",
             ["tip.target"]     = "Id numérico da conta que vai receber a restauração. Precisa casar com uma pasta dentro do diretório de players. Digite um id novo para deixar pronto para uma conta nova.",
             ["tip.replace"]    = "Só para restaurar: marque para sobrescrever arquivos que já existem na conta de destino.",
-            ["tip.list"]       = "Uma linha por conta que o jogo lembra neste pc. A coluna de plataforma é um chute pelo formato do id.",
+            ["list.tip"]       = "Uma linha por conta que o jogo lembra neste pc. ARQUIVOS = tudo na pasta da conta; TRAVADOS = configs s.1.0.* em somente leitura. A plataforma é um chute pelo formato do id — só um rótulo.",
             ["tip.en"]         = "Interface em English",
             ["tip.pt"]         = "Interface em Português",
         };

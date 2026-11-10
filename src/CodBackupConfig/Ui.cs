@@ -1,3 +1,4 @@
+using System;
 using System.Drawing;
 
 namespace CodBackupConfig
@@ -5,6 +6,11 @@ namespace CodBackupConfig
     // palette lifted from rehab.ac (their css variables, verbatim)
     static class Ui
     {
+        // uniform manual dpi scaling: every hardcoded pixel in the ui goes
+        // through X so a non-96 context scales geometry as a whole; fonts
+        // stay in points and scale with the device context on their own
+        public static float F = 1f;
+        public static int X(int v) => (int)Math.Round(v * F);
         public static readonly Color Bg        = Color.FromArgb(10, 11, 12);
         public static readonly Color Panel     = Color.FromArgb(19, 20, 23);
         public static readonly Color PanelHi   = Color.FromArgb(27, 31, 37);
@@ -17,28 +23,37 @@ namespace CodBackupConfig
         public static readonly Color SelRow    = Color.FromArgb(14, 25, 40);
         public static readonly Color Error     = Color.FromArgb(200, 16, 46);
 
-        // Geist Mono is a web font; Consolas is the closest thing Windows ships
-        static Font Mono(float size, FontStyle style = FontStyle.Regular) =>
+        // consolas stays reserved for numeric player ids and dates
+        public static Font Mono(float size, FontStyle style = FontStyle.Regular) =>
             new Font("Consolas", size, style, GraphicsUnit.Point);
 
-        // hitmarker (activision) for display headers; falls back to consolas
-        // when the memory font registration failed in Program.Main
-        public static Font Head(float size)
+        // hitmarker faces live in process memory via FontHost; a lookup
+        // miss or a gdi+ substitution silently falls back to consolas
+        static Font Face(string family, float size, FontStyle style)
         {
             try
             {
-                var f = new Font("Hitmarker Condensed", size, FontStyle.Bold, GraphicsUnit.Point);
-                if (f.Name.Contains("Hitmarker")) return f;
-                f.Dispose();
+                var fam = FontHost.Get(family);
+                if (fam != null)
+                {
+                    var f = new Font(fam, size, style, GraphicsUnit.Point);
+                    if (f.Name.StartsWith("Hitmarker")) return f;
+                    f.Dispose();
+                }
             }
             catch { }
-            return Mono(size, FontStyle.Bold);
+            return Mono(size, style);
         }
 
-        public static readonly Font Title = Head(12.5f);
-        public static readonly Font CardName = Mono(10f, FontStyle.Bold);
-        public static readonly Font Label = Mono(8.5f, FontStyle.Bold);
-        public static readonly Font Body  = Mono(9.5f);
-        public static readonly Font Small = Mono(8.5f);
+        // condensed cut: titles, section headers and buttons
+        public static Font Head(float size) =>
+            Face("Hitmarker Condensed", size, FontStyle.Bold);
+
+        public static readonly Font Title    = Head(12.5f);
+        public static readonly Font CardName = Face("Hitmarker Normal", 10f, FontStyle.Bold);
+        public static readonly Font Btn      = Face("Hitmarker Condensed", 9f, FontStyle.Bold);
+        public static readonly Font Label    = Face("Hitmarker Text", 8.5f, FontStyle.Regular);
+        public static readonly Font Body     = Face("Hitmarker Text", 9.5f, FontStyle.Regular);
+        public static readonly Font Small    = Face("Hitmarker Text", 8.5f, FontStyle.Regular);
     }
 }

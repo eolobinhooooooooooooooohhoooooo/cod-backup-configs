@@ -18,7 +18,8 @@ namespace CodBackupConfig
         public string Id;
         public string Dir;
         public int FileCount;
-        public int LockedCount;
+        public int S1Count;    // files in the s.1.0.* settings family
+        public int LockedCount;// read-only among the s.1.0.* files only
         public string Platform;
     }
 
@@ -110,13 +111,19 @@ namespace CodBackupConfig
                 {
                     if (!IsAccountDir(dir)) continue;
                     string id = Path.GetFileName(dir);
-                    int files = 0, locked = 0;
+                    int files = 0, s1 = 0, locked = 0;
                     try
                     {
                         foreach (string f in Directory.GetFiles(dir))
                         {
                             files++;
-                            if ((File.GetAttributes(f) & FileAttributes.ReadOnly) != 0) locked++;
+                            // lock state is tracked on the settings family
+                            // only; other read-only files mean nothing here
+                            if (Path.GetFileName(f).StartsWith("s.1.0.", StringComparison.OrdinalIgnoreCase))
+                            {
+                                s1++;
+                                if ((File.GetAttributes(f) & FileAttributes.ReadOnly) != 0) locked++;
+                            }
                         }
                     }
                     catch { }
@@ -125,6 +132,7 @@ namespace CodBackupConfig
                         Id = id,
                         Dir = dir,
                         FileCount = files,
+                        S1Count = s1,
                         LockedCount = locked,
                         Platform = GuessPlatform(id),
                     });

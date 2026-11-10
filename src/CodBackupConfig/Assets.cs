@@ -19,7 +19,7 @@ namespace CodBackupConfig
         }
     }
 
-    // aspect-fit drawing helper shared by cards and the platform legend
+    // aspect-fit drawing helper shared by cards, flags and list rows
     static class Img
     {
         public static Bitmap Scale(Bitmap src, int w, int h)
@@ -41,20 +41,21 @@ namespace CodBackupConfig
                 return;
             }
             Prep(g);
+            // contain: the image never overflows the rect (css object-fit)
             float ar = (float)img.Width / img.Height;
             float rr = (float)r.Width / r.Height;
             Rectangle fr;
-            if (ar > rr)
-            {
-                int h = r.Height;
-                int w = (int)(h * ar);
-                fr = new Rectangle(r.X + (r.Width - w) / 2, r.Y, w, h);
-            }
-            else
+            if (ar > rr) // image relatively wide -> bound by width
             {
                 int w = r.Width;
-                int h = (int)(w / ar);
-                fr = new Rectangle(r.X, r.Y + (r.Height - h) / 2, w, h);
+                int h = Math.Max(1, (int)(w / ar));
+                fr = new Rectangle(r.X + (r.Width - w) / 2, r.Y + (r.Height - h) / 2, w, h);
+            }
+            else         // image relatively tall -> bound by height
+            {
+                int h = r.Height;
+                int w = Math.Max(1, (int)(h * ar));
+                fr = new Rectangle(r.X + (r.Width - w) / 2, r.Y + (r.Height - h) / 2, w, h);
             }
             g.DrawImage(img, fr);
         }

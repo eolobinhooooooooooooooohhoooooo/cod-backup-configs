@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -24,7 +25,7 @@ namespace CodBackupConfig
         bool _dotOn = true;
         Panel _dot;
         Label _title, _ver, _secGame, _secAccounts, _secBackups;
-        Label _legendNote, _status;
+        Label _status;
         FlagButton _btnEn, _btnPt;
         GameCard[] _cards;
         LineButton _btnRefresh, _btnBackup, _btnRestore, _btnLock, _btnPlayers, _btnBackups;
@@ -44,17 +45,65 @@ namespace CodBackupConfig
 
         static string T(string key) => L10n.T(key);
 
+        // platform marks per guessed platform, cached after first load
+        static readonly Dictionary<string, Bitmap> _marks = new(StringComparer.OrdinalIgnoreCase);
+
+        // button widths fit the longest en+pt label measured in hitmarker 9pt bold
+        const int BTN_REFRESH = 112;
+        const int BTN_BACKUP = 200;
+        const int BTN_LOCK = 204;
+        const int BTN_PLAYERS = 210;
+        const int BTN_BACKUPS = 200;
+        const int CHK_W = 210;
+
+        // uniform scale factor for every hardcoded pixel in the ui; fonts stay
+        // in points and scale with the device context on their own
+        float DpiScale()
+        {
+            try
+            {
+                var _ = Handle; // the window dc must exist to report an honest dpi
+                using Graphics g = CreateGraphics();
+                return g.DpiX / 96f;
+            }
+            catch { return 1f; }
+        }
+
+        static Bitmap PlatformMark(string platform)
+        {
+            string key =
+                platform == "battle.net"      ? "platform-battlenet.png" :
+                platform.StartsWith("steam")   ? "platform-steam.png" :
+                platform.StartsWith("xbox")    ? "platform-xbox.png" : null;
+            if (key == null) return null;
+            if (!_marks.TryGetValue(key, out var m))
+                _marks[key] = m = Assets.Img(key);
+            return m;
+        }
+
         public MainForm()
         {
-            AutoScaleMode = AutoScaleMode.Dpi;
+            // winforms' dpi autoscale fights the gpu-scaled device context, so
+            // the framework stays out and geometry scales through Ui.X instead
+            AutoScaleMode = AutoScaleMode.None;
+            Ui.F = DpiScale();
             Text = "Cod Backup Configs";
             BackColor = Ui.Bg;
             Font = Ui.Body;
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(W, 608);
+            ClientSize = new Size(Ui.X(W), Ui.X(576));
             DoubleBuffered = true;
+
+            // window chrome icon from the kit art; the hicon lives exactly
+            // as long as the process, so nothing needs releasing here
+            var icoBmp = Assets.Img("icon-256.png");
+            if (icoBmp != null)
+            {
+                Icon = System.Drawing.Icon.FromHandle(icoBmp.GetHicon());
+                icoBmp.Dispose();
+            }
 
             _tt = new ToolTip { AutoPopDelay = 10000, InitialDelay = 250, ShowAlways = true };
             _games = CodPaths.Games;
@@ -64,6 +113,7 @@ namespace CodBackupConfig
             BuildAccountsSection();
             BuildBackupsSection();
             BuildFooter();
+            ApplyLayout();
 
             _blink = new System.Windows.Forms.Timer { Interval = 1400 };
             _blink.Tick += (s, e) => { _dotOn = !_dotOn; _dot.Invalidate(); };
@@ -99,6 +149,15 @@ namespace CodBackupConfig
             catch { }
         }
 
+        protected override void OnDpiChangedAfterParent(EventArgs e)
+        {
+            base.OnDpiChangedAfterParent(e);
+            // uniform rescale of every control, then rebuild the dynamic part
+            Ui.F = DpiScale();
+            ApplyLayout();
+            LayoutBottom();
+        }
+
         // -------------------------------------------------------------- layout
 
         void BuildTopBar()
@@ -107,7 +166,7 @@ namespace CodBackupConfig
             _dot.Paint += (s, e) =>
             {
                 using var b = new SolidBrush(_dotOn ? Ui.Accent : Ui.Faint);
-                e.Graphics.FillEllipse(b, 0, 0, 5, 5);
+                e.Graphics.FillEllipse(b, 0, 0, Ui.X(5), Ui.X(5));
             };
             Controls.Add(_dot);
 
@@ -124,7 +183,7 @@ namespace CodBackupConfig
             _ver = new Label
             {
                 AutoSize = true,
-                Text = "v1.0.0",
+                Text = "v" + typeof(MainForm).Assembly.GetName().Version.ToString(3),
                 Font = Ui.Small,
                 ForeColor = Ui.Faint,
                 BackColor = Color.Transparent,
@@ -173,57 +232,17 @@ namespace CodBackupConfig
                 _cards[i].BrowseClick += BrowseFor;
                 Controls.Add(_cards[i]);
             }
-
-            // platform legend (official square marks, even gap between items)
-            int y = 198;
-            AddPlatformLogo(M, y, "battle.net");
-            AddPlatformLogo(M + 112, y, "steam");
-            AddPlatformLogo(M + 193, y, "xbox");
-
-            _legendNote = new Label
-            {
-                Font = Ui.Small,
-                ForeColor = Ui.Faint,
-                BackColor = Color.Transparent,
-                TextAlign = ContentAlignment.MiddleRight,
-                Location = new Point(W - M - 420, y + 2),
-                Size = new Size(420, 14),
-            };
-            Controls.Add(_legendNote);
-        }
-
-        void AddPlatformLogo(int x, int y, string name)
-        {
-            var pb = new PictureBox
-            {
-                Location = new Point(x, y),
-                Size = new Size(18, 18),
-                BackColor = Color.Transparent,
-            };
-            var src = Assets.Img("platform-" + name.Replace(".", "") + ".png");
-            if (src != null) pb.Image = Img.Scale(src, 18, 18);
-            Controls.Add(pb);
-
-            Controls.Add(new Label
-            {
-                AutoSize = true,
-                Text = name,
-                Font = Ui.Small,
-                ForeColor = Ui.Dim,
-                BackColor = Color.Transparent,
-                Location = new Point(x + 24, y + 3),
-            });
         }
 
         void BuildAccountsSection()
         {
-            _secAccounts = new SectionLabel { Location = new Point(M, 232) };
+            _secAccounts = new SectionLabel { Location = new Point(M, 196) };
             Controls.Add(_secAccounts);
 
             _btnRefresh = new LineButton
             {
-                Font = Ui.Small,
-                Location = new Point(W - M - 88, 226),
+                Font = Ui.Btn,
+                Location = new Point(W - M - 88, 190),
                 Size = new Size(88, 26),
             };
             _btnRefresh.Icon = Assets.Img("ic-refresh.png");
@@ -232,7 +251,7 @@ namespace CodBackupConfig
 
             _listBorder = new BorderPanel
             {
-                Location = new Point(M, 252),
+                Location = new Point(M, 216),
                 Size = new Size(W - 2 * M, 116),
                 BackColor = Ui.Panel,
             };
@@ -270,18 +289,18 @@ namespace CodBackupConfig
 
         LineButton MakeButton(Point p, Size s)
         {
-            var b = new LineButton { Font = Ui.Body, Location = p, Size = s };
+            var b = new LineButton { Font = Ui.Btn, Location = p, Size = s };
             Controls.Add(b);
             return b;
         }
 
         void BuildBackupsSection()
         {
-            _secBackups = new SectionLabel { Location = new Point(M, 378) };
+            _secBackups = new SectionLabel { Location = new Point(M, 342) };
             Controls.Add(_secBackups);
 
             // left box: saving a backup of the selected account
-            _savePanel = ActionPanel(new Point(M, 396));
+            _savePanel = ActionPanel(new Point(M, 360));
             _saveTag = PanelTag(_savePanel, "sec.save.tag");
             _saveHint = PanelHint(_savePanel);
             _txtName = new TextBox
@@ -297,11 +316,14 @@ namespace CodBackupConfig
                 BackColor = Color.Transparent, Location = new Point(PAD, 90),
             };
             _savePanel.Controls.Add(_saveNote);
-            _btnBackup = PanelButton(_savePanel, DoBackup);
+            // block A: name + backup + lock live in this panel, side by side
+            _btnBackup = PanelButton(_savePanel, DoBackup, new Point(PAD, 116), new Size(200, 28));
             _btnBackup.Icon = Assets.Img("ic-backup.png");
+            _btnLock = PanelButton(_savePanel, DoLock, new Point(PAD + 208, 116), new Size(204, 28));
+            _btnLock.Icon = Assets.Img("ic-lock.png");
 
             // right box: restoring an earlier snapshot
-            _restorePanel = ActionPanel(new Point(M + PANEL_W + GAP, 396));
+            _restorePanel = ActionPanel(new Point(M + PANEL_W + GAP, 360));
             _restoreTag = PanelTag(_restorePanel, "sec.restore.tag");
             _restoreHint = PanelHint(_restorePanel);
             _cbSnap = new ChoiceBox
@@ -319,7 +341,7 @@ namespace CodBackupConfig
             _txtTarget = new TextBox
             {
                 Location = new Point(PAD, 84), Size = new Size(tW, 26),
-                BackColor = Ui.Panel, ForeColor = Ui.Text, Font = Ui.Body,
+                BackColor = Ui.Panel, ForeColor = Ui.Text, Font = Ui.Mono(9.5f),
                 BorderStyle = BorderStyle.FixedSingle,
             };
             _restorePanel.Controls.Add(_txtTarget);
@@ -329,17 +351,14 @@ namespace CodBackupConfig
                 Location = new Point(PAD + tW + 8, 89), Size = new Size(210, 16),
             };
             _restorePanel.Controls.Add(_chkReplace);
-            _btnRestore = PanelButton(_restorePanel, DoRestore);
+            _btnRestore = PanelButton(_restorePanel, DoRestore, new Point(PAD, 116), new Size(PANEL_W - 2 * PAD, 28));
             _btnRestore.Icon = Assets.Img("ic-restore.png");
 
-            _btnLock = MakeButton(new Point(M, 556), new Size(170, 28));
-            _btnLock.Click += (s, e) => DoLock();
-
-            _btnPlayers = MakeButton(new Point(M + 170 + GAP, 556), new Size(210, 28));
+            _btnPlayers = MakeButton(new Point(M, 520), new Size(210, 28));
             _btnPlayers.Icon = Assets.Img("ic-folder.png");
             _btnPlayers.Click += (s, e) => OpenFolder(SelGame()?.Resolved);
 
-            _btnBackups = MakeButton(new Point(M + 170 + GAP + 210 + GAP, 556), new Size(190, 28));
+            _btnBackups = MakeButton(new Point(M + 210 + GAP, 520), new Size(190, 28));
             _btnBackups.Icon = Assets.Img("ic-folder.png");
             _btnBackups.Click += (s, e) => OpenFolder(BackupStore.BackupsRoot);
         }
@@ -378,12 +397,12 @@ namespace CodBackupConfig
             return l;
         }
 
-        LineButton PanelButton(BorderPanel p, Action act)
+        LineButton PanelButton(BorderPanel p, Action act, Point pos, Size size)
         {
             var b = new LineButton
             {
-                Font = Ui.Body, Location = new Point(PAD, 116),
-                Size = new Size(PANEL_W - 2 * PAD, 28),
+                Font = Ui.Btn, Location = pos,
+                Size = size,
             };
             b.Click += (s, e) => act();
             p.Controls.Add(b);
@@ -410,32 +429,103 @@ namespace CodBackupConfig
             Controls.Add(_status);
         }
 
+        // positions every control for the current Ui.F; runs once from the
+        // constructor and again when the window lands on another dpi
+        void ApplyLayout()
+        {
+            _dot.Location = new Point(Ui.X(M), Ui.X(22));
+            _dot.Size = new Size(Ui.X(6), Ui.X(6));
+            _title.Location = new Point(Ui.X(M + 18), Ui.X(14));
+            _btnPt.Location = new Point(Ui.X(W - M - 60), Ui.X(10));
+            _btnPt.Size = new Size(Ui.X(60), Ui.X(28));
+            _btnEn.Location = new Point(Ui.X(W - M - 128), Ui.X(10));
+            _btnEn.Size = new Size(Ui.X(60), Ui.X(28));
+
+            _secGame.Location = new Point(Ui.X(M), Ui.X(56));
+            int cw = (W - 2 * M - 2 * GAP) / 3;
+            for (int i = 0; i < _cards.Length; i++)
+            {
+                _cards[i].Location = new Point(Ui.X(M + i * (cw + GAP)), Ui.X(74));
+                _cards[i].Size = new Size(Ui.X(cw), Ui.X(108));
+            }
+
+            _secAccounts.Location = new Point(Ui.X(M), Ui.X(196));
+            _btnRefresh.Location = new Point(Ui.X(W - M - BTN_REFRESH), Ui.X(190));
+            _btnRefresh.Size = new Size(Ui.X(BTN_REFRESH), Ui.X(26));
+            _listBorder.Location = new Point(Ui.X(M), Ui.X(216));
+            _listBorder.Size = new Size(Ui.X(W - 2 * M), Ui.X(116));
+
+            _secBackups.Location = new Point(Ui.X(M), Ui.X(342));
+            _savePanel.Location = new Point(Ui.X(M), Ui.X(360));
+            _savePanel.Size = new Size(Ui.X(PANEL_W), Ui.X(PANEL_H));
+            _restorePanel.Location = new Point(Ui.X(M + PANEL_W + GAP), Ui.X(360));
+            _restorePanel.Size = new Size(Ui.X(PANEL_W), Ui.X(PANEL_H));
+            LayoutPanels();
+
+            _btnPlayers.Location = new Point(Ui.X(M), Ui.X(520));
+            _btnPlayers.Size = new Size(Ui.X(BTN_PLAYERS), Ui.X(28));
+            _btnBackups.Location = new Point(Ui.X(M + BTN_PLAYERS + GAP), Ui.X(520));
+            _btnBackups.Size = new Size(Ui.X(BTN_BACKUPS), Ui.X(28));
+
+            _footerLine.Location = new Point(Ui.X(M), Ui.X(596));
+            _footerLine.Size = new Size(Ui.X(W - 2 * M), 1);
+            _status.Location = new Point(Ui.X(M), Ui.X(608));
+
+            ClientSize = new Size(Ui.X(W), ClientSize.Height);
+        }
+
+        // children of the two action panels, in panel coordinates
+        void LayoutPanels()
+        {
+            _saveTag.Location = new Point(Ui.X(PAD), Ui.X(12));
+            _saveHint.Location = new Point(Ui.X(PAD), Ui.X(30));
+            _txtName.Location = new Point(Ui.X(PAD), Ui.X(50));
+            _txtName.Size = new Size(Ui.X(PANEL_W - 2 * PAD), Ui.X(26));
+            _saveNote.Location = new Point(Ui.X(PAD), Ui.X(90));
+            _btnBackup.Location = new Point(Ui.X(PAD), Ui.X(116));
+            _btnBackup.Size = new Size(Ui.X(BTN_BACKUP), Ui.X(28));
+            _btnLock.Location = new Point(Ui.X(PAD + BTN_BACKUP + 8), Ui.X(116));
+            _btnLock.Size = new Size(Ui.X(BTN_LOCK), Ui.X(28));
+
+            _restoreTag.Location = new Point(Ui.X(PAD), Ui.X(12));
+            _restoreHint.Location = new Point(Ui.X(PAD), Ui.X(30));
+            _cbSnap.Location = new Point(Ui.X(PAD), Ui.X(50));
+            _cbSnap.Size = new Size(Ui.X(PANEL_W - 2 * PAD), Ui.X(26));
+            int tW = PANEL_W - 2 * PAD - CHK_W - 8;
+            _txtTarget.Location = new Point(Ui.X(PAD), Ui.X(84));
+            _txtTarget.Size = new Size(Ui.X(tW), Ui.X(26));
+            _chkReplace.Location = new Point(Ui.X(PAD + tW + 8), Ui.X(89));
+            _chkReplace.Size = new Size(Ui.X(CHK_W), Ui.X(16));
+            _btnRestore.Location = new Point(Ui.X(PAD), Ui.X(116));
+            _btnRestore.Size = new Size(Ui.X(PANEL_W - 2 * PAD), Ui.X(28));
+        }
+
         // stretch or shrink the window so the list only takes as much
         // space as it has accounts in it
         void LayoutBottom()
         {
+            int rowH = Ui.X(26);
             int rows = Math.Min(Math.Max(_accounts.Count, 1), 4);
-            _listBorder.Height = rows * 26 + 8;
+            _lb.ItemHeight = rowH;
+            _listBorder.Height = rows * rowH + Ui.X(8);
 
-            int secY = _listBorder.Bottom + 14;
-            _secBackups.Location = new Point(M, secY);
+            int secY = _listBorder.Bottom + Ui.X(14);
+            _secBackups.Location = new Point(Ui.X(M), secY);
 
-            int pY = secY + 18;
-            _savePanel.Location = new Point(M, pY);
-            _restorePanel.Location = new Point(M + PANEL_W + GAP, pY);
+            int pY = secY + Ui.X(18);
+            _savePanel.Location = new Point(Ui.X(M), pY);
+            _restorePanel.Location = new Point(Ui.X(M + PANEL_W + GAP), pY);
 
-            int uY = pY + PANEL_H + 14;
-            _btnLock.Location = new Point(M, uY);
-            _btnPlayers.Location = new Point(M + 170 + GAP, uY);
-            _btnBackups.Location = new Point(M + 170 + GAP + 210 + GAP, uY);
+            int uY = pY + _savePanel.Height + Ui.X(14);
+            _btnPlayers.Location = new Point(Ui.X(M), uY);
+            _btnBackups.Location = new Point(Ui.X(M + BTN_PLAYERS + GAP), uY);
 
-            int lY = uY + 28 + 12;
-            _footerLine.Location = new Point(M, lY);
-            _status.Location = new Point(M, lY + 12);
+            int lY = uY + Ui.X(28) + Ui.X(12);
+            _footerLine.Location = new Point(Ui.X(M), lY);
+            _footerLine.Width = Ui.X(W - 2 * M);
+            _status.Location = new Point(Ui.X(M), lY + Ui.X(12));
 
-            float f = 1f;
-            try { using (var gr = CreateGraphics()) f = gr.DpiX / 96f; } catch { }
-            ClientSize = new Size((int)Math.Round(W * f), (int)Math.Round(lY + 42 * f));
+            ClientSize = new Size(ClientSize.Width, lY + Ui.X(42));
         }
 
         void UpdateSaveHint()
@@ -527,7 +617,9 @@ namespace CodBackupConfig
         void UpdateLockButton()
         {
             var a = SelAcct();
-            bool locked = a != null && a.LockedCount > a.FileCount / 2;
+            // LockedCount tracks the s.1.0.* settings family only, so any
+            // locked setting already means "this account is locked"
+            bool locked = a != null && a.LockedCount > 0;
             // icon matches the action the button will perform
             _btnLock.Text = T(locked ? "btn.lockoff" : "btn.lockon");
             _btnLock.Icon = Assets.Img(locked ? "ic-unlock.png" : "ic-lock.png");
@@ -544,8 +636,13 @@ namespace CodBackupConfig
             _snaps = g != null ? BackupStore.ListSnapshots(g.Key) : new List<Snapshot>();
 
             _cbSnap.Items.Clear();
-            foreach (var s in _snaps)
-                _cbSnap.Items.Add(SnapText(s));
+            var icons = new Bitmap[_snaps.Count];
+            for (int i = 0; i < _snaps.Count; i++)
+            {
+                _cbSnap.Items.Add(SnapText(_snaps[i]));
+                icons[i] = PlatformMark(CodPaths.GuessPlatform(_snaps[i].AccountId));
+            }
+            _cbSnap.Icons = icons;
 
             int idx = _cbSnap.Items.Count > 0 ? 0 : -1;
             if (!string.IsNullOrEmpty(oldText))
@@ -688,7 +785,7 @@ namespace CodBackupConfig
         {
             Text = "Cod Backup Configs";
             _title.Text = T("title");
-            _ver.Location = new Point(_title.Right + 10, 19);
+            _ver.Location = new Point(_title.Right + Ui.X(10), Ui.X(19));
             _secGame.Text = T("sec.game");
             _secAccounts.Text = T("sec.accounts");
             _secBackups.Text = T("sec.backups");
@@ -710,7 +807,6 @@ namespace CodBackupConfig
             _txtName.PlaceholderText = T("ph.name");
             _txtTarget.PlaceholderText = T("ph.target");
             _chkReplace.Text = T("chk.replace");
-            _legendNote.Text = T("legend.note");
             _cbSnap.Placeholder = T("ph.none");
             _cbSnap.Invalidate();
 
@@ -729,9 +825,10 @@ namespace CodBackupConfig
             _tt.SetToolTip(_cbSnap, T("tip.snapshot"));
             _tt.SetToolTip(_txtTarget, T("tip.target"));
             _tt.SetToolTip(_chkReplace, T("tip.replace"));
-            _tt.SetToolTip(_lb, T("tip.list"));
+            _tt.SetToolTip(_lb, T("list.tip"));
             for (int i = 0; i < _cards.Length; i++)
             {
+                _cards[i].BrowseButton.Text = T("card.browse");
                 _tt.SetToolTip(_cards[i], T("tip.game"));
                 _tt.SetToolTip(_cards[i].BrowseButton, T("tip.browse"));
             }
@@ -752,28 +849,38 @@ namespace CodBackupConfig
                 g.FillRectangle(back, e.Bounds);
             if (sel)
                 using (var b = new SolidBrush(Ui.Accent))
-                    g.FillRectangle(b, e.Bounds.X, e.Bounds.Y, 2, e.Bounds.Height);
+                    g.FillRectangle(b, e.Bounds.X, e.Bounds.Y, Ui.X(2), e.Bounds.Height);
 
             if (e.Index >= _accounts.Count) // placeholder row
             {
                 TextRenderer.DrawText(g, _lb.Items[e.Index].ToString(), Ui.Small,
-                    new Point(e.Bounds.X + 12, e.Bounds.Y + 6), Ui.Faint,
+                    new Point(e.Bounds.X + Ui.X(12), e.Bounds.Y + Ui.X(6)), Ui.Faint,
                     TextFormatFlags.NoPadding);
                 return;
             }
 
             var a = _accounts[e.Index];
-            int x = e.Bounds.X + 12, y = e.Bounds.Y + 6;
-            Col(g, a.Id, Ui.Text, x, y);
+            int bx = e.Bounds.X, by = e.Bounds.Y + Ui.X(6);
+            int tx = bx + Ui.X(12);
+            var mark = PlatformMark(a.Platform);
+            if (mark != null)
+            {
+                var old = g.InterpolationMode;
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                g.DrawImage(mark, new Rectangle(bx + Ui.X(10), by, Ui.X(14), Ui.X(14)));
+                g.InterpolationMode = old;
+                tx = bx + Ui.X(32);
+            }
+            Col(g, a.Id, Ui.Text, tx, by, Ui.Mono(9.5f));
             Col(g, a.Platform,
                 a.Platform == "unknown" || a.Platform.EndsWith("?") ? Ui.Faint : Ui.Accent,
-                x + 210, y);
-            Col(g, a.FileCount + " files", sel ? Ui.Text : Ui.Dim, x + 430, y);
+                bx + Ui.X(240), by);
+            Col(g, string.Format(T("list.files"), a.FileCount), sel ? Ui.Text : Ui.Dim, bx + Ui.X(430), by);
             if (a.LockedCount > 0)
-                Col(g, a.LockedCount + " locked", sel ? Ui.Text : Ui.Faint, x + 560, y);
+                Col(g, string.Format(T("list.locked"), a.LockedCount), sel ? Ui.Text : Ui.Faint, bx + Ui.X(560), by);
         }
 
-        static void Col(Graphics g, string s, Color c, int x, int y) =>
-            TextRenderer.DrawText(g, s, Ui.Body, new Point(x, y), c, TextFormatFlags.NoPadding);
+        static void Col(Graphics g, string s, Color c, int x, int y, Font f = null) =>
+            TextRenderer.DrawText(g, s, f ?? Ui.Body, new Point(x, y), c, TextFormatFlags.NoPadding);
     }
 }
