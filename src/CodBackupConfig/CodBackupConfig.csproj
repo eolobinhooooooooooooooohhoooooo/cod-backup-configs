@@ -44,6 +44,7 @@
     <EmbeddedResource Include="..\..\assets\kit\fonts\HitmarkerText-Medium.ttf" Condition="Exists('..\..\assets\kit\fonts\HitmarkerText-Medium.ttf')" LogicalName="font/HitmarkerText-Medium.ttf" />
     <EmbeddedResource Include="..\..\assets\kit\fonts\HitmarkerText-Regular.ttf" Condition="Exists('..\..\assets\kit\fonts\HitmarkerText-Regular.ttf')" LogicalName="font/HitmarkerText-Regular.ttf" />
     <EmbeddedResource Include="..\..\assets\kit\icon-256.png" Condition="Exists('..\..\assets\kit\icon-256.png')" LogicalName="img/icon-256.png" />
+    <EmbeddedResource Include="..\..\assets\kit\icon.ico" Condition="Exists('..\..\assets\kit\icon.ico')" LogicalName="img/icon.ico" />
   </ItemGroup>
 
 </Project>

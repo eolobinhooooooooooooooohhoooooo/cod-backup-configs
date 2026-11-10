@@ -12,6 +12,7 @@ namespace CodBackupConfig
         public static float F = 1f;
         public static int X(int v) => (int)Math.Round(v * F);
         public static readonly Color Bg        = Color.FromArgb(10, 11, 12);
+        public static readonly Color Header    = Color.FromArgb(13, 15, 18);
         public static readonly Color Panel     = Color.FromArgb(19, 20, 23);
         public static readonly Color PanelHi   = Color.FromArgb(27, 31, 37);
         public static readonly Color Line      = Color.FromArgb(33, 35, 40);

@@ -73,9 +73,11 @@ namespace CodBackupConfig
             ["tip.snapshot"]   = "Pick a snapshot made earlier to restore it.",
             ["tip.target"]     = "Numeric id of the account to restore into. Must match a folder inside the players directory. Type a new id to stage settings for a fresh account.",
             ["tip.replace"]    = "Only for restoring: tick to overwrite files that already exist in the target account.",
-            ["list.tip"]       = "One row per account the game remembers on this pc. FILES = everything in the account folder; LOCKED = read-only s.1.0.* settings files. Platform is a best-effort guess from the id shape — label only.",
+            ["list.tip"]       = "One row per account the game remembers on this pc. FILES = everything in the account folder; LOCKED = read-only s.1.0.* settings files.",
             ["tip.en"]         = "Interface in English",
             ["tip.pt"]         = "Interface em Português",
+            ["tip.min"]        = "Minimize window",
+            ["tip.close"]      = "Close Cod Backup Configs",
         };
 
         static readonly Dictionary<string, string> Pt = new()
@@ -139,9 +141,11 @@ namespace CodBackupConfig
             ["tip.snapshot"]   = "Escolha um snapshot feito antes para restaurar.",
             ["tip.target"]     = "Id numérico da conta que vai receber a restauração. Precisa casar com uma pasta dentro do diretório de players. Digite um id novo para deixar pronto para uma conta nova.",
             ["tip.replace"]    = "Só para restaurar: marque para sobrescrever arquivos que já existem na conta de destino.",
-            ["list.tip"]       = "Uma linha por conta que o jogo lembra neste pc. ARQUIVOS = tudo na pasta da conta; TRAVADOS = configs s.1.0.* em somente leitura. A plataforma é um chute pelo formato do id — só um rótulo.",
+            ["list.tip"]       = "Uma linha por conta que o jogo lembra neste pc. ARQUIVOS = tudo na pasta da conta; TRAVADOS = configs s.1.0.* em somente leitura.",
             ["tip.en"]         = "Interface em English",
             ["tip.pt"]         = "Interface em Português",
+            ["tip.min"]        = "Minimizar janela",
+            ["tip.close"]      = "Fechar Cod Backup Configs",
         };
     }
 }

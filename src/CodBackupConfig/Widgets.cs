@@ -80,6 +80,58 @@ namespace CodBackupConfig
         }
     }
 
+    // frameless caption controls: minimize dash / close cross with
+    // windows-style hover (close turns red)
+    class WindowButton : Button
+    {
+        public enum Kind { Minimize, Close }
+
+        readonly Kind _kind;
+        bool _hot;
+
+        public WindowButton(Kind kind)
+        {
+            _kind = kind;
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
+                     ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+            FlatStyle = FlatStyle.Flat;
+            FlatAppearance.BorderSize = 0;
+            BackColor = Ui.Header;
+            ForeColor = Ui.Dim;
+            Cursor = Cursors.Hand;
+            TabStop = false;
+            MouseEnter += (s, e) => { _hot = true; Invalidate(); };
+            MouseLeave += (s, e) => { _hot = false; Invalidate(); };
+            Click += (s, e) =>
+            {
+                var f = FindForm();
+                if (f == null) return;
+                if (_kind == Kind.Minimize) f.WindowState = FormWindowState.Minimized;
+                else f.Close();
+            };
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            Graphics g = e.Graphics;
+            bool red = _kind == Kind.Close && _hot;
+            using (var b = new SolidBrush(red ? Ui.Error : (_hot ? Ui.PanelHi : Ui.Header)))
+                g.FillRectangle(b, ClientRectangle);
+            Color fore = red ? Color.White : (_hot ? Ui.Text : Ui.Dim);
+            int cx = Width / 2, cy = Height / 2;
+            using (var p = new Pen(fore))
+            {
+                if (_kind == Kind.Minimize)
+                    g.DrawLine(p, cx - Ui.X(5), cy, cx + Ui.X(5), cy);
+                else
+                {
+                    g.DrawLine(p, cx - Ui.X(5), cy - Ui.X(5), cx + Ui.X(5), cy + Ui.X(5));
+                    g.DrawLine(p, cx - Ui.X(5), cy + Ui.X(5), cx + Ui.X(5), cy - Ui.X(5));
+                }
+            }
+        }
+    }
+
     // 1px bordered container for the account list
     class BorderPanel : Panel
     {
@@ -194,9 +246,9 @@ namespace CodBackupConfig
                     {
                         Colors = new[]
                         {
+                            Color.FromArgb(240, Ui.Bg),
+                            Color.FromArgb(225, Ui.Bg),
                             Color.FromArgb(248, Ui.Bg),
-                            Color.FromArgb(195, Ui.Bg),
-                            Color.FromArgb(238, Ui.Bg),
                         },
                         Positions = new[] { 0f, 0.45f, 1f },
                     };
@@ -210,22 +262,30 @@ namespace CodBackupConfig
 
             // the official lockup is the title; plain name is the fallback
             if (_found && _logo != null)
-                Img.Fit(g, _logo, new Rectangle(Ui.X(12), Ui.X(8), Width - Ui.X(24), Height - Ui.X(50)));
+            {
+                // ~55% of the card width, hugging the top-left; capped to a
+                // 44px strip so the lockup never reaches the bottom lanes
+                int lw = Math.Max(Ui.X(24), (int)(Width * 0.55f) - Ui.X(12));
+                int lh = Math.Min(Ui.X(44), Height - Ui.X(60));
+                Img.Fit(g, _logo, new Rectangle(Ui.X(12), Ui.X(8), lw, lh));
+            }
             else
                 TextRenderer.DrawText(g, _g.Name, Ui.CardName,
                     new Rectangle(Ui.X(12), Ui.X(14), Width - Ui.X(24), Ui.X(18)), Ui.Text, TextFormatFlags.NoPadding);
 
             if (_found)
             {
+                // path and account counter sit in separate lanes 18px apart
+                // so the two lines can never touch, even in pt-br
                 using var sf = new StringFormat(StringFormatFlags.NoWrap);
                 sf.Trimming = StringTrimming.EllipsisCharacter;
                 using var b = new SolidBrush(Ui.Dim);
                 g.DrawString(_g.Resolved, Ui.Small, b,
-                    new RectangleF(Ui.X(12), Height - Ui.X(36), Width - Ui.X(24), Ui.X(14)), sf);
+                    new RectangleF(Ui.X(12), Height - Ui.X(38), Width - Ui.X(24), Ui.X(14)), sf);
 
                 TextRenderer.DrawText(g,
                     string.Format(L10n.T(_accts == 1 ? "card.account" : "card.accounts"), _accts), Ui.Small,
-                    new Rectangle(Ui.X(12), Height - Ui.X(28), Width - Ui.X(24), Ui.X(16)), Ui.Accent,
+                    new Rectangle(Ui.X(12), Height - Ui.X(20), Width - Ui.X(24), Ui.X(14)), Ui.Accent,
                     TextFormatFlags.NoPadding);
             }
             else
@@ -451,6 +511,7 @@ namespace CodBackupConfig
             Cursor = Cursors.Hand;
             BackColor = Ui.Bg;
             ForeColor = Ui.Dim;
+            AutoEllipsis = true;
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -471,7 +532,7 @@ namespace CodBackupConfig
             TextRenderer.DrawText(g, Text, Font,
                 new Rectangle(x + s + Ui.X(7), 0, Width - x - s - Ui.X(8), Height),
                 Checked ? Ui.Text : Ui.Dim,
-                TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+                TextFormatFlags.VerticalCenter | TextFormatFlags.WordEllipsis | TextFormatFlags.NoPadding);
         }
     }
 }
