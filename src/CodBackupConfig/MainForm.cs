@@ -41,6 +41,7 @@ namespace CodBackupConfig
         int _lbPrevSel = -1;
         int _panelW; // live device-px panel width, refreshed in ApplyLayout
         int _lastW;  // resize guard so relayout cannot loop with itself
+        System.Windows.Forms.Timer _settle; // startup resync, see StartSettle
 
         List<GameInfo> _games;
         int _selGame = -1;
@@ -121,7 +122,8 @@ namespace CodBackupConfig
                 int i = _games.FindIndex(g => g.Key == Prefs.LastGame);
                 SelectGame(i < 0 ? 0 : i);
             };
-            FormClosed += (s, e) => Prefs.Save();
+            FormClosed += (s, e) => { if (_settle != null) { _settle.Stop(); _settle.Dispose(); _settle = null; } Prefs.Save(); };
+            Shown += (s, e) => StartSettle();
         }
 
         // film grain background; backcolor stays flat for resize-flash protection
@@ -234,6 +236,85 @@ namespace CodBackupConfig
             Ui.F = DpiScale();
             _lastW = 0;
             ApplyLayout();
+        }
+
+        [StructLayout(LayoutKind.Sequential)] struct RECT { public int l, t, r, b; }
+        [DllImport("user32.dll")] static extern bool GetClientRect(IntPtr h, out RECT rc);
+        [DllImport("user32.dll")] static extern IntPtr MonitorFromWindow(IntPtr h, uint flags);
+        [DllImport("shcore.dll")] static extern int GetDpiForMonitor(IntPtr m, int type, out ushort x, out ushort y);
+
+        // windows can rebaseline a window's dpi shortly after show without
+        // delivering any size message (display reconfigured mid-session). the
+        // window keeps a stale dpi association while its monitor has moved on,
+        // so the layout drawn at the old scale no longer fits the screen.
+        // poll briefly after show and resync to reality through either of two
+        // channels: the true client rect disagreeing with winforms' cache, or
+        // the window's own dpi diverging from its monitor's dpi
+        void StartSettle()
+        {
+            int ticks = 0, dpiMiss = 0;
+            System.Windows.Forms.Timer t = new System.Windows.Forms.Timer { Interval = 250 };
+            t.Tick += (s, e) =>
+            {
+                ticks++;
+                if (ticks > 32) { StopSettle(t); return; }
+
+                RECT rc;
+                if (GetClientRect(Handle, out rc))
+                {
+                    int w = rc.r - rc.l, h = rc.b - rc.t;
+                    if (w > 100 && h > 100 &&
+                        (Math.Abs(w - ClientSize.Width) > 2 || Math.Abs(h - ClientSize.Height) > 2))
+                    {
+                        Ui.F = w / (float)W;
+                        _lastW = 0;
+                        ClientSize = new Size(w, h);
+                        ApplyLayout();
+                        StopSettle(t);
+                        return;
+                    }
+                }
+
+                if (ticks < 4) return; // let startup itself finish first
+                int mdi = MonitorDpi();
+                if (mdi > 0 && Math.Abs(mdi / 96f - Ui.F) > 0.02f)
+                {
+                    if (++dpiMiss >= 2)
+                    {
+                        float f = mdi / 96f;
+                        int nh = (int)Math.Round(ClientSize.Height / Ui.F * f);
+                        Ui.F = f;
+                        _lastW = 0;
+                        ClientSize = new Size(Ui.X(W), nh);
+                        ApplyLayout();
+                        StopSettle(t);
+                    }
+                    return;
+                }
+                dpiMiss = 0;
+            };
+            _settle = t;
+            t.Start();
+        }
+
+        // effective dpi of the monitor under this window, 0 on failure
+        int MonitorDpi()
+        {
+            try
+            {
+                IntPtr m = MonitorFromWindow(Handle, 2); // MONITOR_DEFAULTTONEAREST
+                if (m == IntPtr.Zero) return 0;
+                ushort x, y;
+                return GetDpiForMonitor(m, 0, out x, out y) == 0 ? (int)x : 0;
+            }
+            catch { return 0; }
+        }
+
+        void StopSettle(System.Windows.Forms.Timer t)
+        {
+            t.Stop();
+            t.Dispose();
+            if (ReferenceEquals(_settle, t)) _settle = null;
         }
 
         // frameless keeps sysmenu + minimizebox so the taskbar context menu
@@ -527,7 +608,9 @@ namespace CodBackupConfig
         // so dragging an edge reflows the whole layout
         void ApplyLayout()
         {
-            int cw = Math.Max(ClientSize.Width, Ui.X(920));
+            // floor to the live client width: a dpi transition can hand us a
+            // narrower window than 920*scale and the controls must fit it
+            int cw = ClientSize.Width;
             int m = Ui.X(M), gap = Ui.X(GAP);
             _panelW = (cw - 2 * m - gap) / 2;
             int cardW = (cw - 2 * m - 2 * gap) / 3;
