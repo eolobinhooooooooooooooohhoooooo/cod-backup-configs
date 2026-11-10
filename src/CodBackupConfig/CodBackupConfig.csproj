@@ -9,10 +9,13 @@
     <AssemblyName>Cod Backup Configs</AssemblyName>
     <RootNamespace>CodBackupConfig</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <ApplicationIcon>icon.ico</ApplicationIcon>
+    <ApplicationIcon>..\..\assets\kit\icon.ico</ApplicationIcon>
     <Version>1.0.0</Version>
     <Product>Cod Backup Configs</Product>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- no pdb next to the exe, ever -->
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
 
   <!-- art ships inside the exe, nothing is read from disk at runtime -->
@@ -35,6 +38,12 @@
     <EmbeddedResource Include="..\..\assets\flag-en.png"  Condition="Exists('..\..\assets\flag-en.png')"  LogicalName="img/flag-en.png" />
     <EmbeddedResource Include="..\..\assets\flag-pt.png"  Condition="Exists('..\..\assets\flag-pt.png')"  LogicalName="img/flag-pt.png" />
     <EmbeddedResource Include="..\..\assets\kit\fonts\HitmarkerCondensed-Bold.ttf" Condition="Exists('..\..\assets\kit\fonts\HitmarkerCondensed-Bold.ttf')" LogicalName="font/HitmarkerCondensed-Bold.ttf" />
+    <EmbeddedResource Include="..\..\assets\kit\fonts\HitmarkerNormal-Bold.ttf" Condition="Exists('..\..\assets\kit\fonts\HitmarkerNormal-Bold.ttf')" LogicalName="font/HitmarkerNormal-Bold.ttf" />
+    <EmbeddedResource Include="..\..\assets\kit\fonts\HitmarkerNormal-Regular.ttf" Condition="Exists('..\..\assets\kit\fonts\HitmarkerNormal-Regular.ttf')" LogicalName="font/HitmarkerNormal-Regular.ttf" />
+    <EmbeddedResource Include="..\..\assets\kit\fonts\HitmarkerText-Bold.ttf" Condition="Exists('..\..\assets\kit\fonts\HitmarkerText-Bold.ttf')" LogicalName="font/HitmarkerText-Bold.ttf" />
+    <EmbeddedResource Include="..\..\assets\kit\fonts\HitmarkerText-Medium.ttf" Condition="Exists('..\..\assets\kit\fonts\HitmarkerText-Medium.ttf')" LogicalName="font/HitmarkerText-Medium.ttf" />
+    <EmbeddedResource Include="..\..\assets\kit\fonts\HitmarkerText-Regular.ttf" Condition="Exists('..\..\assets\kit\fonts\HitmarkerText-Regular.ttf')" LogicalName="font/HitmarkerText-Regular.ttf" />
+    <EmbeddedResource Include="..\..\assets\kit\icon-256.png" Condition="Exists('..\..\assets\kit\icon-256.png')" LogicalName="img/icon-256.png" />
   </ItemGroup>
 
 </Project>
