@@ -37,13 +37,13 @@ namespace CodBackupConfig
             if (Icon != null)
             {
                 // 14x14 icon on the left, label centered in the rest
-                int iw = 14, ix = 10;
+                int iw = Ui.X(14), ix = Ui.X(10);
                 var old = g.InterpolationMode;
                 g.InterpolationMode = InterpolationMode.HighQualityBicubic;
                 g.DrawImage(Icon, new Rectangle(ix, (Height - iw) / 2, iw, iw));
                 g.InterpolationMode = old;
                 TextRenderer.DrawText(g, Text, Font,
-                    new Rectangle(ix + iw + 6, 0, Width - ix - iw - 16, Height), fore,
+                    new Rectangle(ix + iw + Ui.X(6), 0, Width - ix - iw - Ui.X(16), Height), fore,
                     TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
                 return;
             }
@@ -71,10 +71,10 @@ namespace CodBackupConfig
             using (var p = new Pen(Highlight || Hot ? Ui.Accent : Ui.Line))
                 g.DrawRectangle(p, 0, 0, Width - 1, Height - 1);
 
-            int fw = 22, fh = 15;
-            if (Flag != null) Img.Fit(g, Flag, new Rectangle(9, (Height - fh) / 2, fw, fh));
+            int fw = Ui.X(22), fh = Ui.X(15), fx = Ui.X(9);
+            if (Flag != null) Img.Fit(g, Flag, new Rectangle(fx, (Height - fh) / 2, fw, fh));
             TextRenderer.DrawText(g, Text, Font,
-                new Rectangle(9 + fw + 4, 0, Width - 9 - fw - 9, Height),
+                new Rectangle(fx + fw + Ui.X(4), 0, Width - fx - fw - Ui.X(9), Height),
                 Highlight || Hot ? Ui.Accent : Ui.Text,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         }
@@ -172,7 +172,7 @@ namespace CodBackupConfig
         }
 
         void LayoutBrowse() =>
-            _browse.Bounds = new Rectangle(Width - 140, Height - 28, 128, 20);
+            _browse.Bounds = new Rectangle(Width - Ui.X(140), Height - Ui.X(28), Ui.X(128), Ui.X(20));
 
         protected override void OnLayout(LayoutEventArgs e) => LayoutBrowse();
 
@@ -210,10 +210,10 @@ namespace CodBackupConfig
 
             // the official lockup is the title; plain name is the fallback
             if (_found && _logo != null)
-                Img.Fit(g, _logo, new Rectangle(12, 8, Width - 24, Height - 50));
+                Img.Fit(g, _logo, new Rectangle(Ui.X(12), Ui.X(8), Width - Ui.X(24), Height - Ui.X(50)));
             else
                 TextRenderer.DrawText(g, _g.Name, Ui.CardName,
-                    new Rectangle(12, 14, Width - 24, 18), Ui.Text, TextFormatFlags.NoPadding);
+                    new Rectangle(Ui.X(12), Ui.X(14), Width - Ui.X(24), Ui.X(18)), Ui.Text, TextFormatFlags.NoPadding);
 
             if (_found)
             {
@@ -221,17 +221,17 @@ namespace CodBackupConfig
                 sf.Trimming = StringTrimming.EllipsisCharacter;
                 using var b = new SolidBrush(Ui.Dim);
                 g.DrawString(_g.Resolved, Ui.Small, b,
-                    new RectangleF(12, Height - 36, Width - 24, 14), sf);
+                    new RectangleF(Ui.X(12), Height - Ui.X(36), Width - Ui.X(24), Ui.X(14)), sf);
 
                 TextRenderer.DrawText(g,
                     string.Format(L10n.T(_accts == 1 ? "card.account" : "card.accounts"), _accts), Ui.Small,
-                    new Rectangle(12, Height - 28, Width - 24, 16), Ui.Accent,
+                    new Rectangle(Ui.X(12), Height - Ui.X(28), Width - Ui.X(24), Ui.X(16)), Ui.Accent,
                     TextFormatFlags.NoPadding);
             }
             else
             {
                 TextRenderer.DrawText(g, L10n.T("card.notfound"), Ui.Small,
-                    new Rectangle(12, 40, Width - 24, 14), Ui.Faint,
+                    new Rectangle(Ui.X(12), Ui.X(40), Width - Ui.X(24), Ui.X(14)), Ui.Faint,
                     TextFormatFlags.NoPadding);
             }
         }
@@ -261,11 +261,14 @@ namespace CodBackupConfig
     class ChoiceBox : Control
     {
         public List<string> Items { get; } = new();
+        public Bitmap[] Icons { get; set; }  // per-item left mark, may be null
         public string Placeholder { get; set; } = "";
         public event Action<int> Changed;
 
         int _sel = -1;
         Panel _shell;   // non-null while the dropdown is open
+        MouseEventHandler _outside;
+        List<Control> _hooked = new();
         ListBox _lb;
         EventHandler _deact;
 
@@ -287,9 +290,20 @@ namespace CodBackupConfig
 
         string Current => _sel >= 0 && _sel < Items.Count ? Items[_sel] : null;
 
+        bool HasIcon(int i) => i >= 0 && i < (Icons?.Length ?? 0) && Icons[i] != null;
+
+        void DrawIcon(Graphics g, int i, Rectangle box)
+        {
+            var old = g.InterpolationMode;
+            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            g.DrawImage(Icons[i], box);
+            g.InterpolationMode = old;
+        }
+
         protected override void OnMouseDown(MouseEventArgs e)
         {
             base.OnMouseDown(e);
+            if (e.Button != MouseButtons.Left) return;
             Toggle();
         }
 
@@ -316,7 +330,7 @@ namespace CodBackupConfig
                 ForeColor = Ui.Text,
                 Font = Font,
                 DrawMode = DrawMode.OwnerDrawFixed,
-                ItemHeight = 26,
+                ItemHeight = Ui.X(26),
                 IntegralHeight = false,
                 SelectionMode = SelectionMode.One,
             };
@@ -327,8 +341,14 @@ namespace CodBackupConfig
                 bool sel = e.Index == _lb.SelectedIndex;
                 using var b = new SolidBrush(sel ? Ui.AccentDim : Ui.Panel);
                 e.Graphics.FillRectangle(b, e.Bounds);
+                int tx = e.Bounds.X + Ui.X(12);
+                if (HasIcon(e.Index))
+                {
+                    DrawIcon(e.Graphics, e.Index, new Rectangle(e.Bounds.X + Ui.X(6), e.Bounds.Y + Ui.X(6), Ui.X(14), Ui.X(14)));
+                    tx += Ui.X(20);
+                }
                 TextRenderer.DrawText(e.Graphics, _lb.Items[e.Index].ToString(), Ui.Body,
-                    new Point(e.Bounds.X + 12, e.Bounds.Y + 6),
+                    new Point(tx, e.Bounds.Y + Ui.X(6)),
                     sel ? Ui.Text : Ui.Dim, TextFormatFlags.NoPadding);
             };
             _lb.Click += (s, e) =>
@@ -339,38 +359,46 @@ namespace CodBackupConfig
                 Changed?.Invoke(_sel);
             };
             _shell.Controls.Add(_lb);
-            int h = Math.Min(Items.Count, 6) * 26 + 2;
+            int h = Math.Min(Items.Count, 6) * Ui.X(26) + Ui.X(2);
             _shell.Size = new Size(Width, h);
 
             // dock below us, or above us if the window would clip it
             Point ho = host.PointToClient(PointToScreen(new Point(0, 0)));
-            bool below = ho.Y + Height + 2 + h <= host.ClientSize.Height;
+            bool below = ho.Y + Height + Ui.X(2) + h <= host.ClientSize.Height;
             _shell.Location = below
-                ? new Point(ho.X, ho.Y + Height + 2)
-                : new Point(ho.X, ho.Y - 2 - h);
+                ? new Point(ho.X, ho.Y + Height + Ui.X(2))
+                : new Point(ho.X, ho.Y - Ui.X(2) - h);
             host.Controls.Add(_shell);
             _shell.BringToFront();
-            host.Click += OnOwnerClick;
+            // WinForms has no mouse-event bubbling, and a click-catcher panel
+            // would hide the UI behind it, so hook MouseDown on every control
+            // instead: any press outside the box and the open shell closes it
+            _outside = (s, e) =>
+            {
+                if (e.Button != MouseButtons.Left) return;
+                if (ReferenceEquals(s, this) || ReferenceEquals(s, _shell) || ReferenceEquals(s, _lb)) return;
+                Close();
+            };
+            HookControls(host);
             host.Deactivate += _deact;
         }
 
-        void OnOwnerClick(object s, EventArgs e)
+        void HookControls(Control root)
         {
-            if (_shell == null) return;
-            Point p = _shell.PointToClient(Cursor.Position);
-            if (p.X < 0 || p.Y < 0 || p.X >= _shell.Width || p.Y >= _shell.Height)
-                Close();
+            root.MouseDown += _outside;
+            _hooked.Add(root);
+            foreach (Control c in root.Controls)
+                HookControls(c);
         }
 
         void Close()
         {
             if (_shell == null) return;
             var host = FindForm();
-            if (host != null)
-            {
-                host.Click -= OnOwnerClick;
-                host.Deactivate -= _deact;
-            }
+            if (host != null) host.Deactivate -= _deact;
+            foreach (var c in _hooked)
+                if (!c.IsDisposed) c.MouseDown -= _outside;
+            _hooked.Clear();
             Rectangle was = _shell.Bounds;
             _shell.Controls.Remove(_lb);
             host?.Controls.Remove(_shell);
@@ -390,18 +418,24 @@ namespace CodBackupConfig
             Color c = t == null ? Ui.Faint : Ui.Text;
             using (var p = new Pen(_shell != null ? Ui.Accent : Ui.Line))
                 g.DrawRectangle(p, 0, 0, Width - 1, Height - 1);
+            int tx = Ui.X(10);
+            if (t != null && HasIcon(_sel))
+            {
+                DrawIcon(g, _sel, new Rectangle(Ui.X(8), (Height - Ui.X(14)) / 2, Ui.X(14), Ui.X(14)));
+                tx = Ui.X(28);
+            }
             TextRenderer.DrawText(g, t ?? Placeholder, Font,
-                new Rectangle(10, 0, Width - 32, Height), c,
+                new Rectangle(tx, 0, Width - tx - Ui.X(32), Height), c,
                 TextFormatFlags.Left | TextFormatFlags.VerticalCenter |
                 TextFormatFlags.SingleLine | TextFormatFlags.NoPadding);
 
             // chevron
             using (var pen = new Pen(c))
             {
-                int cx = Width - 17, cy = Height / 2;
+                int cx = Width - Ui.X(17), cy = Height / 2;
                 g.DrawLines(pen, new[]
                 {
-                    new Point(cx - 3, cy - 2), new Point(cx, cy + 2), new Point(cx + 3, cy - 2),
+                    new Point(cx - Ui.X(3), cy - Ui.X(2)), new Point(cx, cy + Ui.X(2)), new Point(cx + Ui.X(3), cy - Ui.X(2)),
                 });
             }
         }
@@ -423,7 +457,7 @@ namespace CodBackupConfig
         {
             Graphics g = e.Graphics;
             using (var b = new SolidBrush(BackColor)) g.FillRectangle(b, ClientRectangle);
-            int s = 13, x = 1, y = (Height - s) / 2;
+            int s = Ui.X(13), x = Ui.X(1), y = (Height - s) / 2;
             using (var b = new SolidBrush(Checked ? Ui.AccentDim : Ui.Panel))
                 g.FillRectangle(b, x, y, s, s);
             using (var p = new Pen(Checked ? Ui.Accent : Ui.Line))
@@ -432,10 +466,10 @@ namespace CodBackupConfig
                 using (var p = new Pen(Ui.Text))
                     g.DrawLines(p, new[]
                     {
-                        new Point(x + 3, y + 7), new Point(x + 5, y + 9), new Point(x + 9, y + 4),
+                        new Point(x + Ui.X(3), y + Ui.X(7)), new Point(x + Ui.X(5), y + Ui.X(9)), new Point(x + Ui.X(9), y + Ui.X(4)),
                     });
             TextRenderer.DrawText(g, Text, Font,
-                new Rectangle(x + s + 7, 0, Width - x - s - 8, Height),
+                new Rectangle(x + s + Ui.X(7), 0, Width - x - s - Ui.X(8), Height),
                 Checked ? Ui.Text : Ui.Dim,
                 TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         }
