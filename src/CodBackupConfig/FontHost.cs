@@ -12,6 +12,10 @@ namespace CodBackupConfig
     // private font collection fed from the embedded ttf bytes. no files
     // are written, no registry keys touched, nothing left behind when
     // the process exits. on any failure the ui silently keeps consolas.
+    // the same bytes are also registered in gdi (addfontmemresourceex)
+    // because textrenderer/label/textbox route through gdi, which cannot
+    // see a gdi+ private collection and would otherwise substitute a
+    // different face with different metrics (clipped button labels)
     internal static class FontHost
     {
         [DllImport("gdiplus.dll", ExactSpelling = true, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Unicode)]
@@ -22,6 +26,9 @@ namespace CodBackupConfig
 
         [DllImport("gdiplus.dll", ExactSpelling = true, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Unicode)]
         static extern int GdipCreateFontFamilyFromName(string name, IntPtr coll, out IntPtr ff);
+
+        [DllImport("gdi32.dll", ExactSpelling = true, CallingConvention = CallingConvention.StdCall, CharSet = CharSet.Unicode)]
+        static extern int AddFontMemResourceEx(IntPtr bytes, uint length, IntPtr param, ref uint faces);
 
         // pins keep the ttf bytes reachable for the whole run; gdi+ holds
         // onto the pointers and stops using the faces if they move
@@ -61,6 +68,12 @@ namespace CodBackupConfig
                     GCHandle pin = GCHandle.Alloc(bytes, GCHandleType.Pinned);
                     _pins.Add(pin);
                     GdipPrivateAddMemoryFont(coll, pin.AddrOfPinnedObject(), bytes.Length, out _);
+                    // mirror the face into gdi so the non-gdi+ text paths
+                    // (textrenderer, label, textbox, checkbox) resolve the
+                    // family by name; the pin keeps the bytes alive for the
+                    // whole process lifetime
+                    uint faces = 0;
+                    AddFontMemResourceEx(pin.AddrOfPinnedObject(), (uint)bytes.Length, IntPtr.Zero, ref faces);
                 }
 
                 // distinct gdi+ families (the medium cut carries its own
