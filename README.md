@@ -1,57 +1,125 @@
-# Cod Backup Configs
+<div align="center">
 
-One small Windows program that saves your Call of Duty settings and moves them
-between accounts. Works with **Black Ops 6**, **Black Ops 7** and **Modern Warfare 4**
-on **Battle.net**, **Steam** and **Xbox PC**.
+<a href="docs/screenshot.png">
+  <img src="docs/banner.svg" alt="Cod Backup Configs — Save, transfer & lock Call of Duty settings across accounts and platforms" width="100%" />
+</a>
 
-It is a single `.exe`. Nothing to install, nothing to configure. It copies files —
-it never deletes anything, and nothing leaves your computer.
+<br />
+<br />
 
-## How to use it
+<img src="https://img.shields.io/badge/PLATFORM-WIN_10_%2F_11_x64-0159B3?style=flat-square&labelColor=131417" alt="Windows 10 / 11 x64" />
+<img src="https://img.shields.io/badge/RUNTIME-.NET_8_SINGLE_EXE-0A0B0C?style=flat-square&labelColor=131417" alt=".NET 8 Single File" />
+<img src="https://img.shields.io/badge/SAFETY-COPY--ONLY_%C2%B7_OFFLINE-0F243C?style=flat-square&labelColor=131417" alt="Copy-Only and Offline" />
+<img src="https://img.shields.io/badge/LANGUAGES-EN_%2F_PT--BR-0A0B0C?style=flat-square&labelColor=131417" alt="English and Portuguese" />
+<img src="https://img.shields.io/badge/RELEASE-v1.0.0-0159B3?style=flat-square&labelColor=131417" alt="Version 1.0.0" />
+<img src="https://img.shields.io/badge/LICENSE-MIT-131417?style=flat-square&labelColor=0A0B0C" alt="MIT License" />
 
-1. Run `Cod Backup Configs.exe` and click the game card (it finds your folders by itself).
-2. Click your account in the list.
-3. Use the buttons:
+<br />
 
-   - **BACKUP ACCOUNT** — saves your account's settings into a dated snapshot.
-   - **RESTORE SNAPSHOT** — copies a saved snapshot into any account (for example,
-     when you start on a different platform).
-   - **LOCK SETTINGS** — makes the graphics settings read-only so the game
-     cannot reset them. Click again to unlock.
+**Zero-install Windows utility to back up, transfer, and read-only lock local Call of Duty configs across accounts and platforms.**
 
-Hover over any button to read what it does. The flags at the top right switch
-the interface between English and Portuguese.
+[Workflow](#-how-it-works) &nbsp;·&nbsp; [Features](#-key-features) &nbsp;·&nbsp; [Preview](#-interface-preview) &nbsp;·&nbsp; [Quick Start](#-quick-start) &nbsp;·&nbsp; [Build](#-building-from-source)
 
-## Where things are stored
+</div>
 
-- Snapshots: `%LOCALAPPDATA%\CodBackupConfigs\backups\…`
-- Preferences: `%LOCALAPPDATA%\CodBackupConfigs\prefs.json`
+---
 
-Both places are inside your user profile only.
+## ⚡ How It Works
 
-## Requirements
+<div align="center">
+  <img src="docs/workflow.svg" alt="Three-step copy-only workflow: Auto-detect accounts, save dated local snapshot, restore to any numeric ID or lock s.1.0.* settings read-only" width="100%" />
+</div>
 
-Windows 10 or 11, 64-bit. That's all.
+Cod Backup Configs is **100% file-based and copy-only**. It never injects into game memory, never touches binaries, never uploads telemetry, and never deletes source files.
 
-## Versions
+---
 
-Releases are tagged (`v1.0.0`, …) and listed in [CHANGELOG.md](CHANGELOG.md).
+## 🎯 Supported Titles & Platforms
 
-## Building from source
+| Category | Supported | Details |
+| :--- | :--- | :--- |
+| **Call of Duty Titles** | **Black Ops 6** · **Black Ops 7** · **Modern Warfare 4** | Auto-detects `players` directories per title + manual folder picker fallback |
+| **PC Storefronts** | **Battle.net** · **Steam** · **Xbox PC** | Platform inferred from numeric account ID shape (`SteamID64`, `Battle.net`, Xbox) |
+| **Protected Configs** | `s.1.0.*` graphics & profile files | Instant `ReadOnly` attribute toggle across all `s.1.0.*` files in an account |
 
-Requires the [.NET 8 SDK](https://dotnet.microsoft.com/download):
+---
 
+## ✨ Key Features
+
+- **Single Portable Executable** — Self-contained `.NET 8` win-x64 `.exe`. Embedded artwork, icons, and typography stay in memory — nothing is extracted next to the binary or left on disk.
+- **Auto-Detection Across Accounts** — Discovers detected numeric account directories under local Call of Duty `players` paths with one-click refresh and file/lock counters.
+- **Dated Copy-Only Snapshots** — Saves full account configuration folders into timestamped snapshots with optional custom labels. Original folders remain untouched.
+- **Cross-Account & Cross-Platform Migration** — Restore any saved snapshot into a different numeric account ID (e.g., Battle.net → Steam or fresh alt IDs), with an explicit toggle before overwriting existing files.
+- **One-Click Read-Only Lock** — Prevents game patches or crashes from resetting your tuned graphics and input `s.1.0.*` files. Unlock anytime in one click.
+- **Live Language Switch** — Instant runtime switch between **English** and **Português (BR)** via top-right flags.
+
+---
+
+## 🖥 Interface Preview
+
+<div align="center">
+  <img src="docs/screenshot.png" alt="Cod Backup Configs dark minimalist desktop interface" width="92%" />
+</div>
+
+> Designed around an obsidian steel palette (`#0A0B0C` / `#131417`), crisp `1 px` borders (`#212328`), cobalt focus accents (`#0159B3`), deterministic subtle background grain, and memory-loaded **Hitmarker** display typography.
+
+---
+
+## 🚀 Quick Start
+
+1. Launch `Cod Backup Configs.exe` on **Windows 10 / 11 (64-bit)**.
+2. Select a detected game card (**BO6**, **BO7**, or **MW4**) — or click **choose folder…** if your `players` folder lives in a custom path.
+3. Pick an account from the list:
+   - **BACKUP ACCOUNT** — Saves a dated snapshot of the selected account.
+   - **RESTORE SNAPSHOT** — Pick a snapshot, verify the target numeric ID (or enter a new ID to stage a fresh profile), and restore.
+   - **LOCK SETTINGS / UNLOCK SETTINGS** — Toggles Windows `ReadOnly` on all `s.1.0.*` config files in that account.
+
+---
+
+## 📁 Local Data Footprint
+
+Everything created by the app stays inside your local Windows user profile — no registry entries, no background services, no temp log files:
+
+| Purpose | Local Path |
+| :--- | :--- |
+| **Snapshots** | `%LOCALAPPDATA%\CodBackupConfigs\backups\` |
+| **UI Preferences** | `%LOCALAPPDATA%\CodBackupConfigs\prefs.json` |
+
+---
+
+## 🛠 Building from Source
+
+Requires the **[.NET 8 SDK](https://dotnet.microsoft.com/download)** (`win-x64`):
+
+```powershell
+dotnet publish src\CodBackupConfig\CodBackupConfig.csproj `
+  -c Release `
+  -r win-x64 `
+  --self-contained true `
+  -p:PublishSingleFile=true `
+  -p:IncludeNativeLibrariesForSelfExtract=true `
+  -p:DebugType=none `
+  -p:DebugSymbols=false `
+  -o dist
 ```
-dotnet publish src\CodBackupConfig\CodBackupConfig.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o dist
-```
 
-Result: `dist\Cod Backup Configs.exe`.
+Output binary: `dist\Cod Backup Configs.exe` (single file, no `.pdb` sidecar).
 
-## Docs
+---
 
-- [docs/PLAN.md](docs/PLAN.md) — how it works, detection strategy, UI spec
-- [docs/RESEARCH.md](docs/RESEARCH.md) — where the paths and file names come from
-- [assets/spec/](assets/spec/) — asset definitions for anyone adding or replacing art
+## 📚 Documentation & Credits
 
-Not affiliated with Activision, Valve or Microsoft. Game names and logos belong
-to their owners. MIT licensed (see [LICENSE](LICENSE)).
+- [`CHANGELOG.md`](CHANGELOG.md) — SemVer release history (`v1.0.0`, …)
+- [`docs/PLAN.md`](docs/PLAN.md) — Detection rules, copy guarantees, and UI layout spec
+- [`docs/RESEARCH.md`](docs/RESEARCH.md) — Path layout and config filename references
+- [`assets/SOURCES.md`](assets/SOURCES.md) · [`assets/spec/`](assets/spec/) — Embedded art provenance and visual tokens
+
+---
+
+<div align="center">
+
+<sub>Not affiliated with Activision Publishing, Inc., Valve Corporation, or Microsoft Corporation. Game titles, key art, logos, and the Hitmarker typeface belong to their respective owners and are used strictly for visual identification in an unofficial non-commercial utility.</sub>
+
+<sub>Source code released under the <a href="LICENSE">MIT License</a>.</sub>
+
+</div>

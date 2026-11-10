@@ -18,10 +18,10 @@ unofficial utility that is not sold.
 | `kit/logo-bo7.png` | https://commons.wikimedia.org/wiki/File:CoDBlackOps7_Logo.svg | Official lockup rendered 512 wide, wordmark recolored `#F2F0EB`, orange `7` kept. © Activision. |
 | `kit/logo-mw4.png` | https://commons.wikimedia.org/wiki/File:CODMW4_LOGO_PRIMARY.webp | Official lockup rendered 512 wide, original white + gold `IV` kept. © Activision. |
 | `kit/ic-backup.png` … `kit/ic-folder.png` | handmade | Six 32×32 action icons, stroke `#E9E6DF`, accent detail `#0159B3`. Original to this repo. |
-| `kit/fonts/HitmarkerCondensed-Bold.ttf` | https://brand.callofduty.com/typography/typeface → https://www.callofduty.com/cdn/brand/HitmarkerFonts.zip | Official Activision typeface, loaded memory-only at runtime. © Activision. Other weights sit in the kit unshipped. |
+| `kit/fonts/Hitmarker*.ttf` (six faces) | https://brand.callofduty.com/typography/typeface → https://www.callofduty.com/cdn/brand/HitmarkerFonts.zip | Official Activision typeface; every shipped face is embedded in the exe and registered in a GDI+ private collection at startup — memory-only, no install, no registry. © Activision. |
 | `flag-en.png` | https://flagcdn.com/w160/gb.png | flagcdn.com, CC0. 160×80. |
 | `flag-pt.png` | https://flagcdn.com/w160/br.png | flagcdn.com, CC0. 160×112. |
-| `src/CodBackupConfig/icon.ico` | handmade | Shipped application icon (BMP DIB 16–48 + PNG 64–256). Canonical master; `kit/icon.ico` and `kit/icon-256.png` are the design source. |
+| `kit/icon.ico` | handmade | Shipped `<ApplicationIcon>` (BMP DIB 16–48 + PNG 64–256), referenced directly by the csproj. `kit/icon-256.png` is embedded separately and becomes the runtime window icon. |
 
 ## Generated at runtime (no source file)
 

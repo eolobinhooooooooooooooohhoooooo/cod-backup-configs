@@ -16,7 +16,7 @@ Read order: this file (pipeline) → `ASSETS.md` (what to make, per slot) →
 | `assets/SOURCES.md` | provenance ledger, one line per file. **Must be updated whenever a file changes.** |
 | `assets/spec/` | this folder — the definitions |
 | `src/CodBackupConfig/CodBackupConfig.csproj` | `<EmbeddedResource>` list — single source of truth for what actually ships in the exe |
-| `src/CodBackupConfig/icon.ico` | shipped application icon (`<ApplicationIcon>`) |
+| `assets/kit/icon.ico` | shipped application icon (`<ApplicationIcon>`), referenced directly by the csproj — single canonical file |
 
 Runtime rule: the app never reads assets from disk. Everything ships as an
 embedded resource and loads through `Assets.Img("name")` (resource

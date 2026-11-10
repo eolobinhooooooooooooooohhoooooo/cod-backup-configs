@@ -36,9 +36,8 @@ Shared acceptance (applies to every slot unless overridden):
 | 4.6 | ic-folder | `assets/kit/ic-folder.png` | `img/ic-folder.png` | 14×14 | PNG RGBA 32×32 | SHIP |
 | 5.1 | GB flag | `assets/flag-en.png` | `img/flag-en.png` | aspect-fit in 22×15 | PNG ≥160 wide | SHIP |
 | 5.2 | BR flag | `assets/flag-pt.png` | `img/flag-pt.png` | aspect-fit in 22×15 | PNG ≥160 wide | SHIP |
-| 6.1 | app icon | `src/CodBackupConfig/icon.ico` | `<ApplicationIcon>` | taskbar/titlebar 16-256 | ICO multi-frame | SHIP |
-| 7.1 | Hitmarker Condensed Bold | `assets/kit/fonts/HitmarkerCondensed-Bold.ttf` | `font/HitmarkerCondensed-Bold.ttf` | title 12.5 pt, section labels 10 pt | TTF | SHIP |
-| 7.2 | other Hitmarker weights | `assets/kit/fonts/Hitmarker*.ttf` (5 files) | not embedded | — | TTF | OPTIONAL |
+| 6.1 | app icon | `assets/kit/icon.ico` | `<ApplicationIcon>`; `img/icon-256.png` → runtime window icon | taskbar/titlebar 16-256 | ICO multi-frame | SHIP |
+| 7.1 | Hitmarker (all six faces) | `assets/kit/fonts/Hitmarker*.ttf` | `font/<name>.ttf` × 6 | roles in §7 | TTF | SHIP |
 | 8.1 | grain tile | none (generated at startup) | none | tiled across form background | 96×96 ARGB, built in `GrainFx.cs` | SHIP |
 | 9.1 | old wordmarks | `assets/{steam,battlenet,xbox}.png` | none | — | PNG ~240 wide | DEPRECATED |
 
@@ -132,9 +131,13 @@ Source: flagcdn.com `/w160/` (public domain / CC0).
 
 ## 6 · App icon
 
-Shipped file: `src/CodBackupConfig/icon.ico`, wired as `<ApplicationIcon>`
-(exe icon, Explorer, taskbar, default window icon). Masters for re-export:
-`assets/kit/icon.ico` and `assets/kit/icon-256.png` (256×256 RGBA).
+Single canonical file: `assets/kit/icon.ico`, referenced directly by the
+csproj as `<ApplicationIcon>` (exe icon in Explorer and the taskbar). The old
+src-local copy was deleted on 2026-11-10 — there is exactly one icon to keep
+in sync. `assets/kit/icon-256.png` (256×256 RGBA) ships separately, embedded
+as `img/icon-256.png`, and is converted at startup into the live window icon
+(`Icon.FromHandle(bmp.GetHicon())` in MainForm), so the title-bar icon never
+depends on the exe's resource table.
 
 Acceptance:
 - multi-frame ICO: **BMP DIB 32bpp frames at 16/24/32/48** (WinForms garbles
@@ -142,30 +145,40 @@ Acceptance:
 - recognizable silhouette at 16 px; reads correctly on a dark taskbar
 - ≤30 KB
 
-Note: the shipped src icon and the kit master currently differ (different
-hashes). Treat the shipped file as canonical; if you replace it, update both
-and keep them identical.
-
 ## 7 · Typefaces (Hitmarker)
 
-Ship: `HitmarkerCondensed-Bold.ttf` → resource `font/HitmarkerCondensed-Bold.ttf`.
-GDI+ family name is exactly `Hitmarker Condensed`. Used **only** for the app
-title (`Ui.Head(12.5f)`) and the section labels GAME / ACCOUNTS / BACKUPS
-(`Ui.Head(10f)`). Everything else — body, numbers, buttons, list rows,
-tooltips — stays Consolas, because account IDs and timestamps need strict
-tabular alignment.
+All six faces ship, each embedded as `font/<name>.ttf`:
 
-Registration is memory-only, no OS install (see `Program.Main` and the kit
-README for the recipe): embed as `font/<name>`, pin the bytes with a
-`GCHandle` that stays alive for process lifetime, register with **both**
-`PrivateFontCollection.AddMemoryFont` and gdi32 `AddFontMemResourceEx`, before
-any control is created. If the family fails to register, the app silently
-falls back to Consolas Bold — never crash, never show a dialog.
+| file | GDI+ family | role in the UI |
+|------|-------------|----------------|
+| `HitmarkerCondensed-Bold.ttf` | `Hitmarker Condensed` | window title 12.5 pt (`Ui.Title`), section labels GAME / ACCOUNTS / BACKUPS 10 pt, button caps 9 pt (`Ui.Btn`) |
+| `HitmarkerNormal-Bold.ttf` | `Hitmarker Normal` | game names on the cards 10 pt (`Ui.CardName`) |
+| `HitmarkerText-Regular.ttf` | `Hitmarker Text` | labels/hints 8.5 pt (`Ui.Label`, `Ui.Small`), body 9.5 pt (`Ui.Body`) |
+| `HitmarkerText-Medium.ttf` | `Hitmarker Text Medium` | registered, no UI slot yet |
+| `HitmarkerText-Bold.ttf` | `Hitmarker Text` | bold runs of body text |
+| `HitmarkerNormal-Regular.ttf` | `Hitmarker Normal` | regular-weight name text |
 
-Optional (kit-only, documented roles in `assets/kit/README.md`):
-`HitmarkerNormal-{Bold,Regular}.ttf`, `HitmarkerText-{Regular,Medium,Bold}.ttf`.
-Not embedded, not loaded. Adding one = new `font/...` csproj entry + one more
-registration pass in Program.Main.
+Consolas stays reserved for numeric player ids and dates/timestamps
+(`Ui.Mono()`, incl. the restore target field), which need strict tabular
+alignment.
+
+Registration is memory-only, no OS install. The recipe lives in
+`src/CodBackupConfig/FontHost.cs` (loaded once from `Program.Main` before any
+control exists): a `new Bitmap(1, 1)` warm-up initializes the GDI+ session;
+each embedded ttf is read from the manifest, pinned with a `GCHandle` kept
+alive for the whole run, and fed to `GdipPrivateAddMemoryFont` on a
+collection made with `GdipNewPrivateFontCollection`. The raw handle from
+`GdipCreateFontFamilyFromName` is then wrapped into a managed `FontFamily`
+via reflection (`FormatterServices.GetUninitializedObject` + the internal
+`_nativeFamily` field + `_createDefaultOnFail = true`), because gdi+
+families built from a private collection have no public constructor.
+`Ui.Face(...)` resolves through `FontHost.Get` and trusts the result only if
+GDI+ really returned a `Hitmarker*` font; any miss, substitution or
+exception silently falls back to Consolas — never crash, never show a
+dialog.
+
+Adding or swapping a face = new/replaced `font/...` csproj entry plus the
+file name in `FontHost.Load`.
 
 License: © Activision — identification/display use in the app. No redrawing or
 redistributing the faces outside the exe.
@@ -199,14 +212,15 @@ contract.
 white wordmarks (~240 px). Replaced by slot 2; the files were deleted from the repo on 2026-11-09
 (no code or csproj reference remained).
 
-## Known open items (as of 2026-11-09)
+## Known open items (as of 2026-11-10)
 
 1. ~~Battle.net legend mark missing~~ — fixed 2026-11-09: `AddPlatformLogo`
    now strips dots from the platform key before the resource lookup, so
    `battle.net` resolves to `img/platform-battlenet.png`. Verified by pixel
    scan of a screenshot (87 blue px in the legend box).
-2. ~~Shipped `icon.ico` and kit master differ~~ — resolved 2026-11-09:
-   `src/CodBackupConfig/icon.ico` is canonical (shipped); `kit/icon.ico` and
-   `kit/icon-256.png` are kept only as the design master in SOURCES.md.
+2. ~~Shipped `icon.ico` and kit master differ~~ — resolved 2026-11-10:
+   `assets/kit/icon.ico` is the single canonical file, wired straight into
+   `<ApplicationIcon>`; the old `src/CodBackupConfig/icon.ico` copy was
+   deleted the same day.
 3. MW4 lockup renders smaller because its official aspect is 512×161 —
    optional wide crop (slot 3).

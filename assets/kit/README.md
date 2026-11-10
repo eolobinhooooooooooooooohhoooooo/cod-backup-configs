@@ -7,8 +7,8 @@ Ready-to-embed asset kit prepared for `src/CodBackupConfig/` (`.csproj` `Embedde
 ### 1. Application Icon
 | File | Format / Frames | Use |
 |---|---|---|
-| `icon.ico` | Multi-size `.ico`: **BMP DIB 32bpp** (`16, 24, 32, 48`) + **PNG** (`64, 128, 256`) | `<ApplicationIcon>` in `.csproj` and `Form.Icon` (`Icon.ExtractAssociatedIcon(Environment.ProcessPath)` or embedded resource). |
-| `icon-256.png` | `256x256` RGBA transparent | Titlebar / About badge / README preview. |
+| `icon.ico` | Multi-size `.ico`: **BMP DIB 32bpp** (`16, 24, 32, 48`) + **PNG** (`64, 128, 256`) | `<ApplicationIcon>` in `.csproj` (exe icon, Explorer, taskbar) — referenced directly from this path, the single canonical copy. |
+| `icon-256.png` | `256x256` RGBA transparent | Embedded as `img/icon-256.png`; converted into the live window icon at startup (`Icon.FromHandle(bmp.GetHicon())` in MainForm). |
 
 > **Why BMP DIB for 16–48px:** WinForms `System.Drawing.Icon` garbles small PNG-encoded ICO frames. Keeping `16..48` as classic 32-bit DIB guarantees sharp taskbar, Explorer, and titlebar rendering.
 
@@ -41,20 +41,25 @@ Recommended draw size on buttons: `14x14` or `16x16` (`InterpolationMode.HighQua
 ### 5. Official Activision Hitmarker Fonts (`fonts/*.ttf`)
 Downloaded from Activision's official brand portal (`https://brand.callofduty.com/typography/typeface` -> `https://www.callofduty.com/cdn/brand/HitmarkerFonts.zip`).
 
-| File | Verified GDI+ Family Name | Suggested UI Role |
+| File | Verified GDI+ Family Name | Shipped role (v1.0.0) |
 |---|---|---|
-| `HitmarkerCondensed-Bold.ttf` | `Hitmarker Condensed` | App header, section headers (`GAME`, `ACCOUNTS`, `BACKUPS`) |
-| `HitmarkerNormal-Bold.ttf` | `Hitmarker Normal` | Game card titles, primary action buttons |
-| `HitmarkerNormal-Regular.ttf` | `Hitmarker Normal` | Secondary subheadings |
-| `HitmarkerText-Regular.ttf` | `Hitmarker Text` | Labels, status bar, descriptions, tooltips |
-| `HitmarkerText-Medium.ttf` | `Hitmarker Text Medium` | Buttons, dropdown items |
-| `HitmarkerText-Bold.ttf` | `Hitmarker Text` | Emphasis / selected badges |
+| `HitmarkerCondensed-Bold.ttf` | `Hitmarker Condensed` | Window title, section headers (`GAME`, `ACCOUNTS`, `BACKUPS`), button caps |
+| `HitmarkerNormal-Bold.ttf` | `Hitmarker Normal` | Game names on the account cards |
+| `HitmarkerNormal-Regular.ttf` | `Hitmarker Normal` | Registered spare (normal-weight name text) |
+| `HitmarkerText-Regular.ttf` | `Hitmarker Text` | Labels, hints, body text, status, tooltips |
+| `HitmarkerText-Medium.ttf` | `Hitmarker Text Medium` | Registered, no UI slot yet |
+| `HitmarkerText-Bold.ttf` | `Hitmarker Text` | Bold body-text runs |
 
 > **WinForms Memory-Only Loading Note (Zero Temp Files / No OS Install Needed):**
-> 1. Embed `.ttf` files as `<EmbeddedResource>` in `.csproj`.
-> 2. Pin each font `byte[]` with `GCHandle.Alloc(bytes, GCHandleType.Pinned)` (do **not** free `Marshal.AllocCoTaskMem` immediately, or GDI+ drops font families lazily).
-> 3. Register with **both** `PrivateFontCollection.AddMemoryFont(ptr, len)` (for GDI+ `Graphics.DrawString`) **and** `AddFontMemResourceEx(ptr, (uint)len, IntPtr.Zero, ref count)` from `gdi32.dll` (required for `TextRenderer.DrawText` and native WinForms controls like `TextBox`/`Label`).
-> 4. Keep `Consolas` for numeric Account IDs and timestamps so columns remain strictly tabular/aligned.
+> the working recipe is `src/CodBackupConfig/FontHost.cs` — all six files are
+> embedded as `font/<name>.ttf`, pinned with `GCHandle` (kept alive for the
+> whole run) and fed to `GdipPrivateAddMemoryFont` on a collection made with
+> `GdipNewPrivateFontCollection` (a `new Bitmap(1, 1)` warm-up initializes the
+> GDI+ session first). Each family handle from `GdipCreateFontFamilyFromName`
+> is wrapped into a managed `FontFamily` via reflection (`_nativeFamily` +
+> `_createDefaultOnFail`). `Ui.Face(...)` silently falls back to Consolas on
+> any miss or substitution; Consolas also stays reserved for numeric account
+> IDs and timestamps so columns remain strictly tabular/aligned.
 
 ## Licensing Notice
 - **MIT License** applies to the application source code (`src/`).
