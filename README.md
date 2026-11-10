@@ -11,7 +11,7 @@
 <img src="https://img.shields.io/badge/RUNTIME-.NET_8_SINGLE_EXE-0A0B0C?style=flat-square&labelColor=131417" alt=".NET 8 Single File" />
 <img src="https://img.shields.io/badge/SAFETY-COPY--ONLY_%C2%B7_OFFLINE-0F243C?style=flat-square&labelColor=131417" alt="Copy-Only and Offline" />
 <img src="https://img.shields.io/badge/LANGUAGES-EN_%2F_PT--BR-0A0B0C?style=flat-square&labelColor=131417" alt="English and Portuguese" />
-<img src="https://img.shields.io/badge/RELEASE-v1.0.0-0159B3?style=flat-square&labelColor=131417" alt="Version 1.0.0" />
+<img src="https://img.shields.io/badge/RELEASE-v1.11.10-0159B3?style=flat-square&labelColor=131417" alt="Version 1.11.10" />
 <img src="https://img.shields.io/badge/LICENSE-MIT-131417?style=flat-square&labelColor=0A0B0C" alt="MIT License" />
 
 <br />
@@ -109,7 +109,7 @@ Output binary: `dist\Cod Backup Configs.exe` (single file, no `.pdb` sidecar).
 
 ## 📚 Documentation & Credits
 
-- [`CHANGELOG.md`](CHANGELOG.md) — SemVer release history (`v1.0.0`, …)
+- [`CHANGELOG.md`](CHANGELOG.md) — release history, date-encoded tags (`v1.11.10`, …)
 - [`docs/PLAN.md`](docs/PLAN.md) — Detection rules, copy guarantees, and UI layout spec
 - [`docs/RESEARCH.md`](docs/RESEARCH.md) — Path layout and config filename references
 - [`assets/SOURCES.md`](assets/SOURCES.md) · [`assets/spec/`](assets/spec/) — Embedded art provenance and visual tokens

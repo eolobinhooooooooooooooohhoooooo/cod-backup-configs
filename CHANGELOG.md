@@ -1,9 +1,11 @@
 # Changelog
 
-All notable changes. Versions follow [SemVer](https://semver.org/): each tag
-(`v1.0.0`, `v1.0.1`, …) marks a published release of the single-file exe.
+All notable changes. Releases are date-encoded `1.MM.DD` (release month.day,
+valid SemVer): each tag (`v1.11.10`, …) marks a published release of the
+single-file exe. The v-badge in the app reads the assembly version, so the
+header always matches the build.
 
-## [1.0.0] - 2026-11-10
+## [1.11.10] - 2026-11-10
 
 First public version.
 
