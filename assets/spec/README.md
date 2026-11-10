@@ -48,7 +48,7 @@ embedded resource and loads through `Assets.Img("name")` (resource
 - Determinism where files are generated: fixed seeds, no wall-clock input.
   Same input → same bytes.
 - Size budgets: covers ≤150 KB each, marks/icons ≤30 KB each, flags ≤10 KB
-  each, app icon ≤30 KB. The published exe must stay near ~140 MB (the .NET
+  each, app icon ≤30 KB. The published exe must stay near ~139 MB (the .NET
   runtime dominates; the image payload stays in the low-MB range).
 - Dark-first: an asset only counts if it looks right on `#0A0B0C` under the
   app's own painting (scrim, borders). Test in the app, never in isolation.

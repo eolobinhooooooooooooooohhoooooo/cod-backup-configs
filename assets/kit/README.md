@@ -55,7 +55,10 @@ Downloaded from Activision's official brand portal (`https://brand.callofduty.co
 > embedded as `font/<name>.ttf`, pinned with `GCHandle` (kept alive for the
 > whole run) and fed to `GdipPrivateAddMemoryFont` on a collection made with
 > `GdipNewPrivateFontCollection` (a `new Bitmap(1, 1)` warm-up initializes the
-> GDI+ session first). Each family handle from `GdipCreateFontFamilyFromName`
+> GDI+ session first); the same pinned bytes are then mirrored into GDI via
+> `AddFontMemResourceEx`, because `TextRenderer`/`Label`/`TextBox`/checkbox
+> text resolve families through GDI, which cannot see a GDI+ private
+> collection. Each family handle from `GdipCreateFontFamilyFromName`
 > is wrapped into a managed `FontFamily` via reflection (`_nativeFamily` +
 > `_createDefaultOnFail`). `Ui.Face(...)` silently falls back to Consolas on
 > any miss or substitution; Consolas also stays reserved for numeric account

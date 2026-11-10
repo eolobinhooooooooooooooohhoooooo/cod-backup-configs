@@ -167,7 +167,11 @@ Registration is memory-only, no OS install. The recipe lives in
 control exists): a `new Bitmap(1, 1)` warm-up initializes the GDI+ session;
 each embedded ttf is read from the manifest, pinned with a `GCHandle` kept
 alive for the whole run, and fed to `GdipPrivateAddMemoryFont` on a
-collection made with `GdipNewPrivateFontCollection`. The raw handle from
+collection made with `GdipNewPrivateFontCollection`; the same pinned bytes are
+then mirrored into GDI with `AddFontMemResourceEx`, because WinForms text
+paths that bypass GDI+ (`TextRenderer`, `Label`, `TextBox`, checkbox text)
+resolve families through GDI, which cannot see a private GDI+ collection.
+The raw handle from
 `GdipCreateFontFamilyFromName` is then wrapped into a managed `FontFamily`
 via reflection (`FormatterServices.GetUninitializedObject` + the internal
 `_nativeFamily` field + `_createDefaultOnFail = true`), because gdi+
@@ -190,21 +194,22 @@ Not a slot with a file — it is built deterministically at startup in
 `OnPaintBackground`. Panels, buttons and cards stay flat on purpose.
 
 Contract (deterministic — same bytes on every run):
-- 96×96 `Format32bppArgb` seamless tile
-- value noise: 8×8 grid from `Random(1337)`, smoothstep bilinear with grid
-  indices wrapped modulo 8 (guarantees seamless tiling)
-- ordered dither: standard 4×4 Bayer matrix, normalized [0,1]
-- per pixel: `delta = (n - 0.5) * 13 + (bayer - 0.5) * 13`, applied equally to
-  R/G/B over base `#0A0B0C` → neutral grey grain, total peak-to-peak swing ≤ 26
-  levels (the shipped reading of the requested 5 % noise + 10 % dither)
+- 256×256 `Format32bppArgb` seamless tile
+- per-pixel noise: independent integer hash per `(x, y)` position — no grid,
+  no smoothing steps, so the tile reads as pure matte grain (no blocks)
+- ordered dither: standard 4×4 Bayer matrix, normalized [0,1], indexed by
+  `(y % 4) * 4 + (x % 4)`
+- per pixel: `delta = (n - 0.5) * 5 + (bayer - 0.5) * 3`, applied equally to
+  R/G/B over base `#0A0B0C` → neutral matte grain, total peak-to-peak swing
+  ≤ 8 levels; rows written as `(255<<24) | (r<<16) | (g<<8) | b` (BGRA order)
 - consumed through a cached `TextureBrush(WrapMode.Tile)`
 
 Measured acceptance: sampling an empty background strip of a screenshot gives
-max−min ≈ 4-30 levels; sampling inside a panel gives zero variance.
+max−min ≈ 2-8 levels; sampling inside a panel gives zero variance.
 
-To retune loudness: change the two amplitude constants (both 13) in
-`BuildTile` only. Seed, grid size, Bayer matrix and wrap logic are fixed by
-contract.
+To retune loudness: change the two amplitude constants (5 and 3) in
+`BuildTile` only. The hash mix, Bayer matrix and modulo-4 indexing are fixed
+by contract.
 
 ## 9 · Deprecated
 

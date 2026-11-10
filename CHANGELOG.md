@@ -16,6 +16,6 @@ First public version.
 - Dark minimalist UI with official platform marks, game lockups and the full
   six-face Hitmarker family (embedded, memory-only); subtle deterministic
   background grain.
-- Ships as one self-contained `Cod Backup Configs.exe` (~140 MB): no installer,
+- Ships as one self-contained `Cod Backup Configs.exe` (~139 MB): no installer,
   no sidecar files, no `.pdb`, nothing left on disk after the run.
 - Per-monitor DPI crispness from 100% to 300% scaling.

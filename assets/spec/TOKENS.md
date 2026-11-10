@@ -36,12 +36,13 @@ logos) keep their official colors — that is the sanctioned palette exception.
 
 ## Structure
 
-- 12 px grid. Window width fixed 940, margins 24, gap between blocks 12,
-  panel inner padding 14.
+- 12 px grid. Window width dynamic (starts 980, minimum 920; every control
+  reflows live on resize), margins 24, gap between blocks 12, panel inner
+  padding 14.
 - 1 px `Line` borders are the entire structural language: **no rounded
   corners, no drop shadows, no strokes thicker than 1 px.**
 - No gradients on panels or controls. Exactly one sanctioned gradient in the
-  app: the card cover scrim (horizontal, Bg→Bg, alpha 248 / 195 @45 % / 238).
+  app: the card cover scrim (horizontal, Bg→Bg, alpha 240 / 225 @45 % / 248).
 - Panels are flat solids. Any asset placed on a panel must assume a flat,
   grain-free surface underneath it.
 

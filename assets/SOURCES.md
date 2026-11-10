@@ -25,9 +25,9 @@ unofficial utility that is not sold.
 
 ## Generated at runtime (no source file)
 
-Background film grain: deterministic 96×96 tile built in `src/CodBackupConfig/GrainFx.cs`
-(seed 1337, 8×8 value noise + 4×4 Bayer, total swing ≤ 26 levels). Same input always
-produces the same pixels.
+Background matte grain: deterministic 256×256 tile built in
+`src/CodBackupConfig/GrainFx.cs` (per-pixel hash noise ±2.5 + 4×4 Bayer dither
+±1.5, total swing ≤ 8 levels). Same input always produces the same pixels.
 
 ## Removed (replaced by the kit)
 
