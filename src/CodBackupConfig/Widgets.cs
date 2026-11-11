@@ -348,7 +348,7 @@ namespace CodBackupConfig
         Panel _shell;   // non-null while the dropdown is open
         MouseEventHandler _outside;
         List<Control> _hooked = new();
-        ListBox _lb;
+        DarkListBox _lb;
         EventHandler _deact;
 
         public int SelectedIndex
@@ -419,38 +419,30 @@ namespace CodBackupConfig
                 using var p = new Pen(Ui.Line);
                 e.Graphics.DrawRectangle(p, 0, 0, _shell.Width - 1, _shell.Height - 1);
             };
-            _lb = new ListBox
+            _lb = new DarkListBox
             {
                 Dock = DockStyle.Fill,
-                BorderStyle = BorderStyle.None,
-                BackColor = Ui.Panel,
-                ForeColor = Ui.Text,
-                Font = Font,
-                DrawMode = DrawMode.OwnerDrawFixed,
-                ItemHeight = Ui.X(26),
-                IntegralHeight = false,
-                SelectionMode = SelectionMode.One,
-            };
-            foreach (string i in Items) _lb.Items.Add(i);
-            if (_sel >= 0 && _sel < _lb.Items.Count) _lb.SelectedIndex = _sel;
-            _lb.DrawItem += (s, e) =>
-            {
-                bool sel = e.Index == _lb.SelectedIndex;
-                using var b = new SolidBrush(sel ? Ui.AccentDim : Ui.Panel);
-                e.Graphics.FillRectangle(b, e.Bounds);
-                int tx = e.Bounds.X + Ui.X(12);
-                if (HasIcon(e.Index))
+                RowHeight = Ui.X(26),
+                RowPainter = (g, i, r, sel) =>
                 {
-                    DrawIcon(e.Graphics, e.Index, new Rectangle(e.Bounds.X + Ui.X(6), e.Bounds.Y + Ui.X(6), Ui.X(14), Ui.X(14)));
-                    tx += Ui.X(20);
-                }
-                TextRenderer.DrawText(e.Graphics, _lb.Items[e.Index].ToString(), Ui.Body,
-                    new Point(tx, e.Bounds.Y + Ui.X(6)),
-                    sel ? Ui.Text : Ui.Dim, TextFormatFlags.NoPadding);
+                    using var b = new SolidBrush(sel ? Ui.AccentDim : Ui.Panel);
+                    g.FillRectangle(b, r);
+                    int tx = r.X + Ui.X(12);
+                    if (HasIcon(i))
+                    {
+                        DrawIcon(g, i, new Rectangle(r.X + Ui.X(6), r.Y + Ui.X(6), Ui.X(14), Ui.X(14)));
+                        tx += Ui.X(20);
+                    }
+                    TextRenderer.DrawText(g, _lb[i], Ui.Body,
+                        new Point(tx, r.Y + Ui.X(6)),
+                        sel ? Ui.Text : Ui.Dim, TextFormatFlags.NoPadding);
+                },
             };
-            _lb.Click += (s, e) =>
+            _lb.SetItems(Items);
+            if (_sel >= 0) _lb.SelectedIndex = _sel;
+            _lb.ItemClicked += i =>
             {
-                _sel = _lb.SelectedIndex;
+                _sel = i;
                 Close();
                 Invalidate();
                 Changed?.Invoke(_sel);
@@ -570,6 +562,252 @@ namespace CodBackupConfig
                 new Rectangle(x + s + Ui.X(7), 0, Width - x - s - Ui.X(8), Height),
                 Checked ? Ui.Text : Ui.Dim,
                 TextFormatFlags.VerticalCenter | TextFormatFlags.WordEllipsis | TextFormatFlags.NoPadding);
+        }
+    }
+
+    // owner-drawn list with no win32 chrome: the consumer paints every row
+    // through RowPainter, and a slim 6px thumb-and-track bar flush to the
+    // right edge only exists while the rows overflow. wheel, keys and
+    // dragging the bar (or pressing the track) scroll it
+    class DarkListBox : Control
+    {
+        public event EventHandler SelectedIndexChanged;
+        public event Action<int> ItemClicked;
+        public Action<Graphics, int, Rectangle, bool> RowPainter;
+
+        string[] _items = Array.Empty<string>();
+        int _rh = 26;
+        int _top;
+        int _sel = -1;
+        bool _grab, _hot;
+        int _grabDy;       // cursor offset from the thumb center while dragging
+        Rectangle _thumb;
+
+        public DarkListBox()
+        {
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
+                     ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+            BackColor = Ui.Panel;
+            TabStop = true;
+            LostFocus += (s, e) => EndDrag();
+        }
+
+        public int Count => _items.Length;
+        public string this[int i] => i >= 0 && i < _items.Length ? _items[i] : null;
+
+        public int RowHeight
+        {
+            get => _rh;
+            set { _rh = Math.Max(Ui.X(8), value); ClampTop(); Invalidate(); }
+        }
+
+        public int SelectedIndex
+        {
+            get => _sel;
+            set
+            {
+                int v = Math.Clamp(value, -1, Math.Max(-1, _items.Length - 1));
+                if (v == _sel) return;
+                _sel = v;
+                if (v >= 0) EnsureVisible(v);
+                Invalidate();
+                SelectedIndexChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        // replaces the whole item list without firing selection events; the
+        // caller reselects through SelectedIndex right after
+        public void SetItems(IEnumerable<string> items)
+        {
+            var l = new List<string>();
+            if (items != null) foreach (string s in items) l.Add(s);
+            _items = l.ToArray();
+            _top = 0;
+            if (_sel >= _items.Length) _sel = _items.Length > 0 ? _items.Length - 1 : -1;
+            Invalidate();
+        }
+
+        int VisibleRows => Math.Max(1, Height / _rh);
+        bool Overflow => _items.Length > VisibleRows;
+        int MaxOff => Math.Max(0, _items.Length - VisibleRows);
+
+        void ClampTop() { _top = Math.Clamp(_top, 0, MaxOff); }
+
+        void EnsureVisible(int i)
+        {
+            if (!Overflow) return;
+            if (i < _top) _top = i;
+            else if (i >= _top + VisibleRows) _top = i - VisibleRows + 1;
+        }
+
+        Rectangle BarRect()
+        {
+            int bw = Ui.X(6);
+            return new Rectangle(Width - Ui.X(2) - bw, 0, bw, Height);
+        }
+
+        Rectangle ThumbRect()
+        {
+            var bar = BarRect();
+            int vis = VisibleRows;
+            int th = Count > 0 ? (int)(bar.Height * vis / (double)Count) : bar.Height;
+            th = Math.Clamp(th, _rh, bar.Height);
+            int span = Math.Max(1, bar.Height - th);
+            int y = MaxOff == 0 ? 0 : (int)((bar.Height - th) * _top / (double)MaxOff);
+            return new Rectangle(bar.X, Math.Clamp(y, 0, span), bar.Width, th);
+        }
+
+        // move the view so the thumb is centered on y
+        void MoveThumbTo(int y)
+        {
+            if (MaxOff == 0) return;
+            var bar = BarRect();
+            var t = ThumbRect();
+            int yy = Math.Clamp(y - t.Height / 2, 0, bar.Height - t.Height);
+            int span = Math.Max(1, bar.Height - t.Height);
+            _top = Math.Clamp((int)Math.Round(yy * MaxOff / (double)span), 0, MaxOff);
+        }
+
+        void SelectRowAt(Point p)
+        {
+            int i = _top + p.Y / _rh;
+            if (p.Y < 0 || i < 0 || i >= _items.Length) return;
+            if (_sel != i) SelectedIndex = i;
+            ItemClicked?.Invoke(i);
+        }
+
+        protected override void OnSizeChanged(EventArgs e)
+        {
+            base.OnSizeChanged(e);
+            ClampTop();
+            Invalidate();
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            Graphics g = e.Graphics;
+            using (var b = new SolidBrush(BackColor)) g.FillRectangle(b, ClientRectangle);
+            // rows stop short of the bar so no text ever runs under the thumb
+            int rx = Overflow ? Width - Ui.X(2) - Ui.X(6) : Width;
+            g.SetClip(new Rectangle(0, 0, rx, Height));
+            for (int v = 0; v < VisibleRows; v++)
+            {
+                int i = _top + v;
+                if (i < 0 || i >= _items.Length) break;
+                RowPainter?.Invoke(g, i, new Rectangle(0, v * _rh, rx, _rh), i == _sel);
+            }
+            g.ResetClip();
+            if (!Overflow) { _thumb = Rectangle.Empty; return; }
+            var bar = BarRect();
+            using (var b = new SolidBrush(Ui.ScrollTrack)) g.FillRectangle(b, bar);
+            _thumb = ThumbRect();
+            using (var b = new SolidBrush((_hot || _grab) ? Ui.Accent : Ui.ScrollThumb))
+                g.FillRectangle(b, _thumb);
+        }
+
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+            Focus();
+            if (e.Button != MouseButtons.Left) return;
+            if (Overflow && e.X >= BarRect().Left)
+            {
+                if (_thumb.Contains(e.Location))
+                    _grabDy = e.Y - _thumb.Y - _thumb.Height / 2;
+                else
+                {
+                    // pressing the track repositions the thumb there and
+                    // carries on as if the cursor held its center
+                    MoveThumbTo(e.Y);
+                    _grabDy = 0;
+                }
+                _grab = true;
+                Cursor = Cursors.SizeNS;
+                Invalidate();
+                return;
+            }
+            SelectRowAt(e.Location);
+        }
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+            if (_grab)
+            {
+                MoveThumbTo(e.Y - _grabDy);
+                Invalidate();
+                return;
+            }
+            bool hot = Overflow && e.X >= BarRect().Left;
+            if (hot != _hot) { _hot = hot; Cursor = hot ? Cursors.SizeNS : Cursors.Default; Invalidate(); }
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+            EndDrag();
+        }
+
+        protected override void OnMouseLeave(EventArgs e)
+        {
+            base.OnMouseLeave(e);
+            if (!_grab && _hot) { _hot = false; Cursor = Cursors.Default; Invalidate(); }
+        }
+
+        void EndDrag()
+        {
+            if (!_grab) return;
+            _grab = false;
+            _hot = false;
+            Cursor = Cursors.Default;
+            Invalidate();
+        }
+
+        protected override void OnMouseWheel(MouseEventArgs e)
+        {
+            base.OnMouseWheel(e);
+            if (!Overflow) return;
+            _top = Math.Clamp(_top - e.Delta / 120 * 3, 0, MaxOff);
+            Invalidate();
+        }
+
+        protected override bool IsInputKey(Keys keyData) =>
+            base.IsInputKey(keyData) ||
+            keyData == Keys.Up || keyData == Keys.Down ||
+            keyData == Keys.PageUp || keyData == Keys.PageDown;
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+            if (_items.Length == 0) return;
+            int page = VisibleRows - 1;
+            switch (e.KeyCode)
+            {
+                case Keys.Up:
+                    SelectedIndex = _sel <= 0 ? _items.Length - 1 : _sel - 1;
+                    e.Handled = true;
+                    break;
+                case Keys.Down:
+                    SelectedIndex = _sel < 0 ? 0 : _sel + 1 >= _items.Length ? 0 : _sel + 1;
+                    e.Handled = true;
+                    break;
+                case Keys.PageUp:
+                    SelectedIndex = Math.Max(0, (_sel < 0 ? page : _sel) - page);
+                    e.Handled = true;
+                    break;
+                case Keys.PageDown:
+                    SelectedIndex = _sel < 0 ? Math.Min(page, _items.Length - 1) : Math.Min(_items.Length - 1, _sel + page);
+                    e.Handled = true;
+                    break;
+                case Keys.Home:
+                    SelectedIndex = 0;
+                    e.Handled = true;
+                    break;
+                case Keys.End:
+                    SelectedIndex = _items.Length - 1;
+                    e.Handled = true;
+                    break;
+            }
         }
     }
 }

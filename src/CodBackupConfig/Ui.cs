@@ -23,6 +23,8 @@ namespace CodBackupConfig
         public static readonly Color AccentDim = Color.FromArgb(15, 36, 60);
         public static readonly Color SelRow    = Color.FromArgb(14, 25, 40);
         public static readonly Color Error     = Color.FromArgb(200, 16, 46);
+        public static readonly Color ScrollTrack = Color.FromArgb(17, 20, 26);
+        public static readonly Color ScrollThumb = Color.FromArgb(44, 52, 66);
 
         // ids and dates render in the hitmarker text cut too: consolas no
         // longer appears anywhere in the ui

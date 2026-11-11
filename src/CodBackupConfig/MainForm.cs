@@ -44,7 +44,7 @@ namespace CodBackupConfig
         BorderPanel _listBorder, _savePanel, _restorePanel;
         Label _saveTag, _saveHint, _saveNote, _restoreTag, _restoreHint;
         Panel _footerLine;
-        ListBox _lb;
+        DarkListBox _lb;
         int _lbPrevSel = -1;
         Size _lastSz; // resize guard so relayout cannot loop with itself
         System.Windows.Forms.Timer _settle; // startup resync, see StartSettle
@@ -113,8 +113,8 @@ namespace CodBackupConfig
             MaximizeBox = true;
             SetStyle(ControlStyles.ResizeRedraw, true);
             StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(Ui.X(W), Ui.X(600 + HH));
-            MinimumSize = new Size(Ui.X(920), Ui.X(620));
+            ClientSize = new Size(Ui.X(W), Ui.X(688));
+            MinimumSize = new Size(Ui.X(920), Ui.X(688));
             // opens maximized; the client size set above stays the restore
             // bounds, so restoring lands back on the design window
             WindowState = FormWindowState.Maximized;
@@ -478,7 +478,7 @@ namespace CodBackupConfig
             // minimum and rebuild the layout at the new scale so the clamp
             // floor stays exact
             Ui.F = DpiScale();
-            MinimumSize = new Size(Ui.X(920), Ui.X(620));
+            MinimumSize = new Size(Ui.X(920), Ui.X(688));
             _lastSz = Size.Empty;
             UpdateMaximizedBounds();
             ApplyLayout();
@@ -695,19 +695,12 @@ namespace CodBackupConfig
                 Size = new Size(W - 2 * M, 116),
                 BackColor = Ui.Panel,
             };
-            _lb = new ListBox
+            _lb = new DarkListBox
             {
                 Dock = DockStyle.Fill,
-                BorderStyle = BorderStyle.None,
-                BackColor = Ui.Panel,
-                ForeColor = Ui.Text,
-                Font = Ui.Body,
-                DrawMode = DrawMode.OwnerDrawFixed,
-                ItemHeight = 26,
-                IntegralHeight = false,
-                SelectionMode = SelectionMode.One,
+                RowHeight = 26,
+                RowPainter = Lb_PaintRow,
             };
-            _lb.DrawItem += Lb_DrawItem;
             _lb.SelectedIndexChanged += (s, e) =>
             {
                 int cur = _lb.SelectedIndex;
@@ -912,7 +905,7 @@ namespace CodBackupConfig
             // the game cards toward their 200px cap, the rest lengthens the
             // account list, so a maximized window has no dead gap
             int below = Ui.X(14 + 18 + PANEL_H + 14 + 28 + 12 + 12 + 16 + 14);
-            int minListH = Ui.X(2 * 26 + 8);
+            int minListH = Ui.X(4 * 26 + 8);
             int extra = ch - (Ui.X(230 + HH) + minListH + below);
             int cardBonus = extra > 0 ? Math.Min((int)Math.Round(extra * 0.25f), Ui.X(200 - CARD_H)) : 0;
             int cardH = Ui.X(CARD_H) + cardBonus;
@@ -937,7 +930,7 @@ namespace CodBackupConfig
             // top and the fixed stack below it (section label, action
             // panels, folder row, footer line, status, bottom pad)
             int listH = Math.Max(minListH, ch - listTop - below);
-            _lb.ItemHeight = Ui.X(26);
+            _lb.RowHeight = Ui.X(26);
             _listBorder.Location = new Point(m, listTop);
             _listBorder.Size = new Size(cw - 2 * m, listH);
 
@@ -1074,14 +1067,13 @@ namespace CodBackupConfig
         void FillList()
         {
             string keep = SelAcct()?.Id;
-            _lb.BeginUpdate();
-            _lb.Items.Clear();
+            var names = new List<string>();
             if (_accounts.Count == 0)
-                _lb.Items.Add(T("list.empty"));
+                names.Add(T("list.empty"));
             else
                 foreach (var item in _accounts)
-                    _lb.Items.Add(item.Id);
-            _lb.EndUpdate();
+                    names.Add(item.Id);
+            _lb.SetItems(names);
 
             if (_accounts.Count > 0)
             {
@@ -1446,27 +1438,25 @@ namespace CodBackupConfig
 
         // -------------------------------------------------------------- list draw
 
-        void Lb_DrawItem(object sender, DrawItemEventArgs e)
+        void Lb_PaintRow(Graphics g, int index, Rectangle bounds, bool sel)
         {
-            Graphics g = e.Graphics;
-            bool sel = e.Index == _lb.SelectedIndex;
             using (var back = new SolidBrush(sel ? Ui.SelRow : Ui.Panel))
-                g.FillRectangle(back, e.Bounds);
+                g.FillRectangle(back, bounds);
             if (sel)
                 using (var b = new SolidBrush(Ui.Accent))
-                    g.FillRectangle(b, e.Bounds.X, e.Bounds.Y, Ui.X(2), e.Bounds.Height);
+                    g.FillRectangle(b, bounds.X, bounds.Y, Ui.X(2), bounds.Height);
 
-            if (e.Index >= _accounts.Count) // placeholder row
+            if (index >= _accounts.Count) // placeholder row
             {
-                TextRenderer.DrawText(g, _lb.Items[e.Index].ToString(), Ui.Small,
-                    new Point(e.Bounds.X + Ui.X(12), e.Bounds.Y + Ui.X(6)), Ui.Faint,
+                TextRenderer.DrawText(g, _lb[index], Ui.Small,
+                    new Point(bounds.X + Ui.X(12), bounds.Y + Ui.X(6)), Ui.Faint,
                     TextFormatFlags.NoPadding);
                 return;
             }
 
-            var a = _accounts[e.Index];
-            int bx = e.Bounds.X, by = e.Bounds.Y + Ui.X(6);
-            int bw = e.Bounds.Width;
+            var a = _accounts[index];
+            int bx = bounds.X, by = bounds.Y + Ui.X(6);
+            int bw = bounds.Width;
             int tx = bx + Ui.X(12);
             // columns stay proportional to the live row width, floored so
             // they never pile up wide or clip narrow; the id gets its own
