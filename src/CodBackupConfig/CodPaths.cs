@@ -9,6 +9,7 @@ namespace CodBackupConfig
     {
         public string Key;      // bo6 | bo7 | mw4
         public string Name;
+        public bool Available;  // false = card shown grayed out, unclickable
         public string[] Roots;  // candidate players folders, in priority order
         public string Resolved; // picked root, null when nothing was found
     }
@@ -39,6 +40,7 @@ namespace CodBackupConfig
             {
                 Key = "bo6",
                 Name = "Black Ops 6",
+                Available = false,
                 Roots = new[]
                 {
                     OldGenRoot,
@@ -51,6 +53,7 @@ namespace CodBackupConfig
             {
                 Key = "bo7",
                 Name = "Black Ops 7",
+                Available = false,
                 Roots = new[]
                 {
                     NewGenRoot,
@@ -61,6 +64,7 @@ namespace CodBackupConfig
             {
                 Key = "mw4",
                 Name = "Modern Warfare 4",
+                Available = true,
                 Roots = new[]
                 {
                     NewGenRoot,

@@ -150,8 +150,9 @@ namespace CodBackupConfig
                 Prefs.Load();
                 L10n.Lang = Prefs.Lang;
                 ApplyTexts();
-                int i = _games.FindIndex(g => g.Key == Prefs.LastGame);
-                SelectGame(i < 0 ? 0 : i);
+                int i = _games.FindIndex(g => g.Key == Prefs.LastGame && g.Available);
+                if (i < 0) i = _games.FindIndex(g => g.Available);
+                SelectGame(i);
             };
             FormClosed += (s, e) =>
             {
@@ -1040,6 +1041,7 @@ namespace CodBackupConfig
 
         void SelectGame(int idx)
         {
+            if (idx < 0 || idx >= _games.Count || !_games[idx].Available) return;
             _selGame = idx;
             for (int i = 0; i < _cards.Length; i++) _cards[i].SetSelected(i == idx);
             Prefs.LastGame = SelGame().Key;
@@ -1355,7 +1357,7 @@ namespace CodBackupConfig
             for (int i = 0; i < _cards.Length; i++)
             {
                 _cards[i].BrowseButton.Text = T("card.browse");
-                Tip(_cards[i], "tip.game");
+                Tip(_cards[i], _games[i].Available ? "tip.game" : "tip.game.off");
                 Tip(_cards[i].BrowseButton, "tip.browse");
             }
 

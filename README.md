@@ -38,7 +38,7 @@ Cod Backup Configs is **100% file-based and copy-only**. It never injects into g
 
 | Category | Supported | Details |
 | :--- | :--- | :--- |
-| **Call of Duty Titles** | **Black Ops 6** · **Black Ops 7** · **Modern Warfare 4** | Auto-detects `players` directories per title + manual folder picker fallback |
+| **Call of Duty Titles** | **Black Ops 6** · **Black Ops 7** · **Modern Warfare 4** | Auto-detects `players` directories per title + manual folder picker fallback. MW4 is active in this release; BO6/BO7 show grayed out, unclickable |
 | **PC Storefronts** | **Battle.net** · **Steam** · **Xbox PC** | Platform inferred from numeric account ID shape (`SteamID64`, `Battle.net`, Xbox) |
 | **Protected Configs** | Every settings file of an account (`.swp` swap files excluded) | Instant `ReadOnly` attribute toggle across all account files — `s.1.0.*`, `g.cod25.*`, `g.cod26.*`, whatever the title names them |
 
@@ -68,7 +68,7 @@ Cod Backup Configs is **100% file-based and copy-only**. It never injects into g
 ## 🚀 Quick Start
 
 1. Launch `Cod Backup Configs.exe` on **Windows 10 / 11 (64-bit)**.
-2. Select a detected game card (**BO6**, **BO7**, or **MW4**) — or click **choose folder…** if your `players` folder lives in a custom path.
+2. Select the game card (**MW4** — **BO6**/**BO7** show grayed out in this release) — or click **choose folder…** if your `players` folder lives in a custom path.
 3. Pick an account from the list:
    - **SAVE PRESET** — Saves the selected account's configs as a dated preset; it lands selected in the preset list right after, ready to apply.
    - **APPLY PRESET** — Pick a preset, choose the account that receives it from the TO dropdown (it follows your list selection), and apply.

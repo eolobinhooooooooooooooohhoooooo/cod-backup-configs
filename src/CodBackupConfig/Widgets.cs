@@ -186,6 +186,7 @@ namespace CodBackupConfig
         Bitmap _cover;
         Bitmap _logo;
         bool _hot;
+        bool _avail;
         bool _found;
         int _accts;
         Button _browse;
@@ -198,10 +199,11 @@ namespace CodBackupConfig
         public GameCard(GameInfo g)
         {
             _g = g;
+            _avail = g.Available;
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
                      ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             BackColor = Ui.Panel;
-            Cursor = Cursors.Hand;
+            Cursor = _avail ? Cursors.Hand : Cursors.Default;
             _cover = Assets.Img(g.Key + ".jpg");
             _logo = Assets.Img("logo-" + g.Key + ".png");
 
@@ -221,7 +223,7 @@ namespace CodBackupConfig
 
             MouseEnter += (s, e) => { _hot = true; Invalidate(); };
             MouseLeave += (s, e) => { _hot = false; Invalidate(); };
-            MouseClick += (s, e) => Clicked?.Invoke();
+            MouseClick += (s, e) => { if (_avail) Clicked?.Invoke(); };
         }
 
         public void SetSelected(bool v)
@@ -235,7 +237,7 @@ namespace CodBackupConfig
         {
             _found = found;
             _accts = accounts;
-            _browse.Visible = !found;
+            _browse.Visible = !found && _avail;
             LayoutBrowse();
             Invalidate();
         }
@@ -249,7 +251,7 @@ namespace CodBackupConfig
         {
             Graphics g = e.Graphics;
             Rectangle r = ClientRectangle;
-            using (var b = new SolidBrush(_hot ? Ui.PanelHi : Ui.Panel))
+            using (var b = new SolidBrush(_avail && _hot ? Ui.PanelHi : Ui.Panel))
                 g.FillRectangle(b, r);
 
             if (_found && _cover != null)
@@ -273,9 +275,6 @@ namespace CodBackupConfig
                     g.FillRectangle(lg, r);
                 }
             }
-
-            using (var p = new Pen(Selected ? Ui.Accent : _hot ? Ui.Dim : Ui.Line))
-                g.DrawRectangle(p, 0, 0, Width - 1, Height - 1);
 
             // the official lockup is the title; plain name is the fallback
             if (_found && _logo != null)
@@ -313,6 +312,16 @@ namespace CodBackupConfig
                     new Rectangle(Ui.X(12), Ui.X(40), Width - Ui.X(24), Ui.X(14)), Ui.Faint,
                     TextFormatFlags.NoPadding);
             }
+
+            // unavailable games paint through a heavy veil so the whole card
+            // reads grayed out; the border stays crisp on top
+            if (!_avail)
+            {
+                using var b = new SolidBrush(Color.FromArgb(195, Ui.Bg));
+                g.FillRectangle(b, r);
+            }
+            using (var p = new Pen(Selected ? Ui.Accent : (_avail && _hot) ? Ui.Dim : Ui.Line))
+                g.DrawRectangle(p, 0, 0, Width - 1, Height - 1);
         }
 
         // fill the rect, center-crop (css object-fit: cover)

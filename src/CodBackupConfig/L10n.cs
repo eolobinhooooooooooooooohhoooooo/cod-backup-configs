@@ -62,6 +62,7 @@ namespace CodBackupConfig
             ["err"]            = "error: ",
 
             ["tip.game"]       = "Pick which Call of Duty to work with. The game keeps one folder per logged-in account inside its players directory; this app only copies files between those folders and your backups.",
+            ["tip.game.off"]   = "Unavailable in this version — Modern Warfare 4 only.",
             ["tip.browse"]     = "Auto-detection failed? Pick the players folder manually.",
             ["tip.refresh"]    = "Rescan the players folder for accounts and lock state.",
             ["tip.backup"]     = "Save the selected account's configs as a preset under CodBackupConfigs\\backups, dated automatically. The original folder stays exactly as it is.",
@@ -131,6 +132,7 @@ namespace CodBackupConfig
             ["err"]            = "erro: ",
 
             ["tip.game"]       = "Escolha qual Call of Duty usar. O jogo guarda uma pasta por conta logada dentro do diretório de players; este app só copia arquivos entre essas pastas e seus backups.",
+            ["tip.game.off"]   = "Indisponível nesta versão — apenas Modern Warfare 4.",
             ["tip.browse"]     = "A detecção automática falhou? Escolha a pasta de players manualmente.",
             ["tip.refresh"]    = "Escaneia a pasta de players de novo, procurando contas e estado de trava.",
             ["tip.backup"]     = "Salva os configs da conta selecionada como preset com data em CodBackupConfigs\\backups. A pasta original continua exatamente como estava.",
