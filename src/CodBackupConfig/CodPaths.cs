@@ -18,8 +18,8 @@ namespace CodBackupConfig
         public string Id;
         public string Dir;
         public int FileCount;
-        public int S1Count;    // files in the s.1.0.* settings family
-        public int LockedCount;// read-only among the s.1.0.* files only
+        public int SettingsCount; // settings files (everything except .swp swap files)
+        public int LockedCount;   // read-only among the settings files only
         public string Platform;
     }
 
@@ -102,6 +102,14 @@ namespace CodBackupConfig
             return name.Length >= 6 && name.All(c => c >= '0' && c <= '9');
         }
 
+        // every file in an account folder is a setting except .swp swap
+        // files: the game rewrites all of them on launch/update, and the
+        // read-only lock exists to stop exactly that. naming differs per
+        // generation (s.1.0.*, g.cod25.*, g.cod26.*, keybinds.*, ...), so
+        // the lock must not depend on any one prefix
+        public static bool IsSettingsFile(string fileName) =>
+            !fileName.EndsWith(".swp", StringComparison.OrdinalIgnoreCase);
+
         public static List<Account> ListAccounts(string root)
         {
             var list = new List<Account>();
@@ -111,17 +119,17 @@ namespace CodBackupConfig
                 {
                     if (!IsAccountDir(dir)) continue;
                     string id = Path.GetFileName(dir);
-                    int files = 0, s1 = 0, locked = 0;
+                    int files = 0, settings = 0, locked = 0;
                     try
                     {
                         foreach (string f in Directory.GetFiles(dir))
                         {
                             files++;
-                            // lock state is tracked on the settings family
-                            // only; other read-only files mean nothing here
-                            if (Path.GetFileName(f).StartsWith("s.1.0.", StringComparison.OrdinalIgnoreCase))
+                            // lock state is tracked on the settings files
+                            // only; .swp swap files mean nothing here
+                            if (IsSettingsFile(Path.GetFileName(f)))
                             {
-                                s1++;
+                                settings++;
                                 if ((File.GetAttributes(f) & FileAttributes.ReadOnly) != 0) locked++;
                             }
                         }
@@ -132,7 +140,7 @@ namespace CodBackupConfig
                         Id = id,
                         Dir = dir,
                         FileCount = files,
-                        S1Count = s1,
+                        SettingsCount = settings,
                         LockedCount = locked,
                         Platform = GuessPlatform(id),
                     });
