@@ -21,12 +21,10 @@ Plain-language preset workflow:
   scroll track and thumb — no white Win32 scrollbar, four full rows visible
   unmaximized.
 
-Game scope:
-
-- Black Ops 6 and Black Ops 7 cards are shown grayed out and unclickable:
-  this release only works with Modern Warfare 4. Detection still runs for
-  all three titles, so the disabled cards keep showing found paths and
-  account counts.
+- Black Ops 6 and Black Ops 7 cards show grayed out and unclickable in this
+  release: it only works with Modern Warfare 4. Detection still runs for all
+  three titles, so the disabled cards keep showing found paths and account
+  counts.
 
 ## [1.11.10] - 2026-11-10
 

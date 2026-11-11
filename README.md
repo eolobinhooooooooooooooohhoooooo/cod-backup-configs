@@ -18,7 +18,7 @@
 
 **Zero-install Windows utility to back up, transfer, and read-only lock local Call of Duty configs across accounts and platforms.**
 
-[Workflow](#-how-it-works) &nbsp;·&nbsp; [Features](#-key-features) &nbsp;·&nbsp; [Preview](#-interface-preview) &nbsp;·&nbsp; [Quick Start](#-quick-start) &nbsp;·&nbsp; [Build](#-building-from-source)
+[Workflow](#how-it-works) &nbsp;·&nbsp; [Features](#key-features) &nbsp;·&nbsp; [Preview](#interface-preview) &nbsp;·&nbsp; [Quick Start](#quick-start) &nbsp;·&nbsp; [Build](#building-from-source)
 
 </div>
 
@@ -47,7 +47,7 @@ Cod Backup Configs is **100% file-based and copy-only**. It never injects into g
 ## ✨ Key Features
 
 - **Single Portable Executable** — Self-contained `.NET 8` win-x64 `.exe`. Embedded artwork, icons, and typography stay in memory — nothing is extracted next to the binary or left on disk.
-- **Auto-Detection Across Accounts** — Discovers detected numeric account directories under local Call of Duty `players` paths with one-click refresh and file/lock counters.
+- **Auto-Detection Across Accounts** — Finds numeric account directories under local Call of Duty `players` paths with one-click refresh and file/lock counters.
 - **Dated Copy-Only Presets** — Saves a full account configuration folder into a dated preset with an optional custom label. Original folders remain untouched.
 - **Cross-Account & Cross-Platform Migration** — Apply any saved preset to a different account picked from the destination dropdown (e.g., Battle.net → Steam), with an explicit toggle before overwriting existing files.
 - **One-Click Read-Only Lock** — Prevents game patches or crashes from resetting your tuned graphics and input. One click marks every settings file of the account (`s.1.0.*`, `g.cod25.*`, `g.cod26.*`, …) read-only — `.swp` swap files stay writable. Unlock anytime in one click.
