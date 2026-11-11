@@ -7,8 +7,7 @@ Ready-to-embed asset kit prepared for `src/CodBackupConfig/` (`.csproj` `Embedde
 ### 1. Application Icon
 | File | Format / Frames | Use |
 |---|---|---|
-| `icon.ico` | Multi-size `.ico`: **BMP DIB 32bpp** (`16, 24, 32, 48`) + **PNG** (`64, 128, 256`) | `<ApplicationIcon>` in `.csproj` (exe icon, Explorer, taskbar) — referenced directly from this path, the single canonical copy. |
-| `icon-256.png` | `256x256` RGBA transparent | Embedded as `img/icon-256.png`; converted into the live window icon at startup (`Icon.FromHandle(bmp.GetHicon())` in MainForm). |
+| `icon.ico` | Multi-size `.ico`: **BMP DIB 32bpp** (`16, 24, 32, 48`) + **PNG** (`64, 128, 256`) | `<ApplicationIcon>` in `.csproj` (exe icon, Explorer, taskbar) — referenced directly from this path, the single canonical copy. Also embedded as `img/icon.ico` for the runtime window/header icon in `MainForm`. |
 
 > **Why BMP DIB for 16–48px:** WinForms `System.Drawing.Icon` garbles small PNG-encoded ICO frames. Keeping `16..48` as classic 32-bit DIB guarantees sharp taskbar, Explorer, and titlebar rendering.
 
@@ -49,6 +48,15 @@ Downloaded from Activision's official brand portal (`https://brand.callofduty.co
 | `HitmarkerText-Regular.ttf` | `Hitmarker Text` | Labels, hints, body text, status, tooltips |
 | `HitmarkerText-Medium.ttf` | `Hitmarker Text Medium` | Registered, no UI slot yet |
 | `HitmarkerText-Bold.ttf` | `Hitmarker Text` | Bold body-text runs |
+
+### 6. Intro Animation (`intro.gif`)
+38-frame 1280×720 GIF, ~2.1 s via its `PropertyItem(0x5100)` frame delays. Content:
+the app shield/lock emblem, “COD BACKUP CONFIGS” wordmark and the tagline
+“LOCAL PROFILE VAULT // COPY-ONLY // READ-ONLY LOCK” over dimmed COD key art;
+both edges fade in/out on `#0A0B0C` so it blends into the app background with
+no visible seam. Embedded as `img/intro.gif` and played **once, in memory**, at
+startup by a fullscreen double-buffered overlay (`IntroOverlay`, MainForm) —
+zero files written, no looping. Skippable with a mouse click, `Esc` or `Space`.
 
 > **WinForms Memory-Only Loading Note (Zero Temp Files / No OS Install Needed):**
 > the working recipe is `src/CodBackupConfig/FontHost.cs` — all six files are

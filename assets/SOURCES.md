@@ -21,7 +21,8 @@ unofficial utility that is not sold.
 | `kit/fonts/Hitmarker*.ttf` (six faces) | https://brand.callofduty.com/typography/typeface → https://www.callofduty.com/cdn/brand/HitmarkerFonts.zip | Official Activision typeface; every shipped face is embedded in the exe and registered in a GDI+ private collection at startup — memory-only, no install, no registry. © Activision. |
 | `flag-en.png` | https://flagcdn.com/w160/gb.png | flagcdn.com, CC0. 160×80. |
 | `flag-pt.png` | https://flagcdn.com/w160/br.png | flagcdn.com, CC0. 160×112. |
-| `kit/icon.ico` | handmade | Shipped `<ApplicationIcon>` (BMP DIB 16–48 + PNG 64–256), referenced directly by the csproj. `kit/icon-256.png` is embedded separately and becomes the runtime window icon. |
+| `kit/icon.ico` | Handmade render of the classic Call of Duty shield/wordmark (https://seeklogo.com/logo/call-of-duty/299092.html) + original lock glyph | Single multi-frame ico (BMP DIB 16–48 + PNG 64–256). Serves as the csproj `<ApplicationIcon>` and is embedded as `img/icon.ico` for the runtime taskbar/alt-tab icon and the header mark — one file for every icon surface. Rendering original to this repo; mark © Activision. |
+| `kit/intro.gif` | Local render, 38 frames 1280×720 (~2.1 s via `PropertyItem(0x5100)` delays) | Animated startup splash: shield/lock emblem, “COD BACKUP CONFIGS” wordmark and tagline over dimmed COD key art, fading in/out on `#0A0B0C`. Embedded as `img/intro.gif`, played once in-memory at startup (skippable: click / Esc / Space). Key art © Activision. |
 
 ## Generated at runtime (no source file)
 
@@ -36,6 +37,7 @@ Background matte grain: deterministic 256×256 tile built in
 | `steam.png` | white wordmark from Wikimedia `Steam_logo.svg` | `kit/platform-steam.png` |
 | `battlenet.png` | white wordmark from Wikimedia `Battle.net_logo.svg` | `kit/platform-battlenet.png` |
 | `xbox.png` | white wordmark from Wikimedia `Xbox_wordmark.svg` | `kit/platform-xbox.png` |
+| `kit/icon-256.png` | standalone 256×256 PNG runtime window icon | folded into `kit/icon.ico` (PNG 256 frame); the ico now covers every icon surface |
 
 Download dates: 2026-11-09 (covers, flags, wordmarks) and kit assembly the same day.
 SVG→PNG conversion done locally with sharp (temp tooling removed afterwards).
