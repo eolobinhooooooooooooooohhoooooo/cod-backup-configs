@@ -80,11 +80,11 @@ namespace CodBackupConfig
         }
     }
 
-    // frameless caption controls: minimize dash / close cross with
-    // windows-style hover (close turns red)
+    // frameless caption controls: minimize dash / maximize square / close
+    // cross with windows-style hover (close turns red)
     class WindowButton : Button
     {
-        public enum Kind { Minimize, Close }
+        public enum Kind { Minimize, Maximize, Close }
 
         readonly Kind _kind;
         bool _hot;
@@ -106,8 +106,14 @@ namespace CodBackupConfig
             {
                 var f = FindForm();
                 if (f == null) return;
-                if (_kind == Kind.Minimize) f.WindowState = FormWindowState.Minimized;
-                else f.Close();
+                if (_kind == Kind.Minimize)
+                    f.WindowState = FormWindowState.Minimized;
+                else if (_kind == Kind.Maximize)
+                    f.WindowState = f.WindowState == FormWindowState.Maximized
+                        ? FormWindowState.Normal
+                        : FormWindowState.Maximized;
+                else
+                    f.Close();
             };
         }
 
@@ -123,6 +129,17 @@ namespace CodBackupConfig
             {
                 if (_kind == Kind.Minimize)
                     g.DrawLine(p, cx - Ui.X(5), cy, cx + Ui.X(5), cy);
+                else if (_kind == Kind.Maximize)
+                {
+                    if (FindForm()?.WindowState == FormWindowState.Maximized)
+                    {
+                        // restore glyph: two offset squares
+                        g.DrawRectangle(p, cx - Ui.X(1), cy - Ui.X(5), Ui.X(7), Ui.X(7));
+                        g.DrawRectangle(p, cx - Ui.X(4), cy - Ui.X(2), Ui.X(7), Ui.X(7));
+                    }
+                    else
+                        g.DrawRectangle(p, cx - Ui.X(4), cy - Ui.X(4), Ui.X(8), Ui.X(8));
+                }
                 else
                 {
                     g.DrawLine(p, cx - Ui.X(5), cy - Ui.X(5), cx + Ui.X(5), cy + Ui.X(5));
@@ -240,15 +257,15 @@ namespace CodBackupConfig
                 CoverCrop(g, _cover, r);
                 using (var lg = new LinearGradientBrush(r, Ui.Bg, Ui.Bg, LinearGradientMode.Horizontal))
                 {
-                    // keep the text zone dark, let a slice of art show mid-card,
-                    // darken the tail so the cover logo stops competing
+                    // keep the text zone dark, a thin slice of art mid-card,
+                    // heavy veil on the tail so the cover logo stays muted
                     var blend = new ColorBlend
                     {
                         Colors = new[]
                         {
-                            Color.FromArgb(240, Ui.Bg),
-                            Color.FromArgb(225, Ui.Bg),
-                            Color.FromArgb(248, Ui.Bg),
+                            Color.FromArgb(246, Ui.Bg),
+                            Color.FromArgb(241, Ui.Bg),
+                            Color.FromArgb(253, Ui.Bg),
                         },
                         Positions = new[] { 0f, 0.45f, 1f },
                     };
@@ -266,7 +283,9 @@ namespace CodBackupConfig
                 // ~55% of the card width, hugging the top-left; capped to a
                 // 44px strip so the lockup never reaches the bottom lanes
                 int lw = Math.Max(Ui.X(24), (int)(Width * 0.55f) - Ui.X(12));
-                int lh = Math.Min(Ui.X(44), Height - Ui.X(60));
+                // the strip grows with taller cards so the lockup stays
+                // proportional instead of pinned at the base size
+                int lh = Math.Min(Math.Max(Ui.X(44), (int)(Height * 0.40f)), Height - Ui.X(60));
                 Img.Fit(g, _logo, new Rectangle(Ui.X(12), Ui.X(8), lw, lh));
             }
             else
@@ -368,6 +387,24 @@ namespace CodBackupConfig
         }
 
         void Toggle() { if (_shell == null) Open(); else Close(); }
+
+        public void Dismiss() => Close();
+
+        // a resize while the dropdown is open moves the host; follow the
+        // fresh host geometry (width and below/above flip included)
+        public void Reposition()
+        {
+            if (_shell == null) return;
+            var host = FindForm();
+            if (host == null) return;
+            _shell.Width = Width;
+            Point ho = host.PointToClient(PointToScreen(new Point(0, 0)));
+            int h = _shell.Height;
+            bool below = ho.Y + Height + Ui.X(2) + h <= host.ClientSize.Height;
+            _shell.Location = below
+                ? new Point(ho.X, ho.Y + Height + Ui.X(2))
+                : new Point(ho.X, ho.Y - Ui.X(2) - h);
+        }
 
         void Open()
         {

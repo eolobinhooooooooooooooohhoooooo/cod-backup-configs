@@ -24,26 +24,37 @@ namespace CodBackupConfig
         public static readonly Color SelRow    = Color.FromArgb(14, 25, 40);
         public static readonly Color Error     = Color.FromArgb(200, 16, 46);
 
-        // consolas stays reserved for numeric player ids and dates
-        public static Font Mono(float size, FontStyle style = FontStyle.Regular) =>
-            new Font("Consolas", size, style, GraphicsUnit.Point);
+        // ids and dates render in the hitmarker text cut too: consolas no
+        // longer appears anywhere in the ui
+        public static Font Num(float size, FontStyle style = FontStyle.Regular) =>
+            Face("Hitmarker Text", size, style);
 
-        // hitmarker faces live in process memory via FontHost; a lookup
-        // miss or a gdi+ substitution silently falls back to consolas
+        // hitmarker faces live in process memory via FontHost; a missing
+        // cut walks the remaining hitmarker families before a total gdi+
+        // failure can ever land on segoe ui
         static Font Face(string family, float size, FontStyle style)
         {
-            try
+            string[] order;
+            if (family.StartsWith("Hitmarker Condensed"))
+                order = new[] { "Hitmarker Condensed", "Hitmarker Normal", "Hitmarker Text" };
+            else if (family.StartsWith("Hitmarker Normal"))
+                order = new[] { "Hitmarker Normal", "Hitmarker Text", "Hitmarker Condensed" };
+            else
+                order = new[] { family, "Hitmarker Text", "Hitmarker Normal", "Hitmarker Condensed" };
+
+            foreach (string name in order)
             {
-                var fam = FontHost.Get(family);
-                if (fam != null)
+                try
                 {
+                    var fam = FontHost.Get(name);
+                    if (fam == null) continue;
                     var f = new Font(fam, size, style, GraphicsUnit.Point);
                     if (f.Name.StartsWith("Hitmarker")) return f;
                     f.Dispose();
                 }
+                catch { }
             }
-            catch { }
-            return Mono(size, style);
+            return new Font(new FontFamily("Segoe UI"), size, style, GraphicsUnit.Point);
         }
 
         // condensed cut: titles, section headers and buttons

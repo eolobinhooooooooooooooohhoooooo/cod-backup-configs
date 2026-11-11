@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Reflection;
 
 namespace CodBackupConfig
@@ -58,6 +59,26 @@ namespace CodBackupConfig
                 fr = new Rectangle(r.X + (r.Width - w) / 2, r.Y + (r.Height - h) / 2, w, h);
             }
             g.DrawImage(img, fr);
+        }
+
+        // contain-fit for multi-frame sources (the gif intro): draws the
+        // given frame centered at its natural aspect
+        public static void Fit(Graphics g, Image img, int frame, Rectangle r)
+        {
+            if (img == null) return;
+            Prep(g);
+            float ar = (float)img.Width / img.Height;
+            float rr = (float)r.Width / r.Height;
+            int w, h;
+            if (ar > rr) { h = r.Height; w = Math.Max(1, (int)(h * ar)); }
+            else { w = r.Width; h = Math.Max(1, (int)(w / ar)); }
+            try
+            {
+                if (frame >= 0 && img.FrameDimensionsList.Length > 0)
+                    img.SelectActiveFrame(new FrameDimension(img.FrameDimensionsList[0]), frame);
+            }
+            catch { }
+            g.DrawImage(img, new Rectangle(r.X + (r.Width - w) / 2, r.Y + (r.Height - h) / 2, w, h));
         }
 
         static void Prep(Graphics g)

@@ -11,7 +11,8 @@ namespace CodBackupConfig
     // activision's hitmarker faces live in process memory only: a gdi+
     // private font collection fed from the embedded ttf bytes. no files
     // are written, no registry keys touched, nothing left behind when
-    // the process exits. on any failure the ui silently keeps consolas.
+    // the process exits. on any failure the ui silently degrades to
+    // segoe ui, the last resort behind the hitmarker cascade.
     // the same bytes are also registered in gdi (addfontmemresourceex)
     // because textrenderer/label/textbox route through gdi, which cannot
     // see a gdi+ private collection and would otherwise substitute a

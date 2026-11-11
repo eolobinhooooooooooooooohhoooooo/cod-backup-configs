@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -23,12 +24,18 @@ namespace CodBackupConfig
         const int CARD_H = 122;
         const int BTN_Y = 134; // action button row, panel-local
 
-        ToolTip _tt;
+        Dictionary<Control, string> _tips;    // l10n tip key per control
+        HashSet<Control> _tipHooked;
+        Control _tipHot;
+        TipPopup _tipPop;
+        System.Windows.Forms.Timer _tipTimer;
+        DateTime _tipShown;
+        IntroOverlay _intro;
         Label _secGame, _secAccounts, _secBackups;
         Label _status;
         FlagButton _btnEn, _btnPt;
-        WindowButton _btnMin, _btnClose;
-        Bitmap _hdrIcon;
+        WindowButton _btnMin, _btnMax, _btnClose;
+        Icon _hdrIco;
         GameCard[] _cards;
         LineButton _btnRefresh, _btnBackup, _btnRestore, _btnLock, _btnPlayers, _btnBackups;
         TickBox _chkReplace;
@@ -39,8 +46,7 @@ namespace CodBackupConfig
         Panel _footerLine;
         ListBox _lb;
         int _lbPrevSel = -1;
-        int _panelW; // live device-px panel width, refreshed in ApplyLayout
-        int _lastW;  // resize guard so relayout cannot loop with itself
+        Size _lastSz; // resize guard so relayout cannot loop with itself
         System.Windows.Forms.Timer _settle; // startup resync, see StartSettle
 
         List<GameInfo> _games;
@@ -66,6 +72,22 @@ namespace CodBackupConfig
             catch { return 1f; }
         }
 
+        // honest scale of the monitor this window sits on; never derived
+        // from the client width, which doubled the whole layout when the
+        // window came up wider than the design size maximized
+        float RealDpiScale()
+        {
+            try
+            {
+                uint d = GetDpiForWindow(Handle);
+                if (d >= 96) return d / 96f;
+            }
+            catch { }
+            int mdi = MonitorDpi();
+            if (mdi >= 96) return mdi / 96f;
+            return DpiScale();
+        }
+
         static Bitmap PlatformMark(string platform)
         {
             string key =
@@ -88,22 +110,31 @@ namespace CodBackupConfig
             BackColor = Ui.Bg;
             Font = Ui.Body;
             FormBorderStyle = FormBorderStyle.None;
-            MaximizeBox = false;
+            MaximizeBox = true;
+            SetStyle(ControlStyles.ResizeRedraw, true);
             StartPosition = FormStartPosition.CenterScreen;
             ClientSize = new Size(Ui.X(W), Ui.X(600 + HH));
             MinimumSize = new Size(Ui.X(920), Ui.X(620));
+            // opens maximized; the client size set above stays the restore
+            // bounds, so restoring lands back on the design window
+            WindowState = FormWindowState.Maximized;
             DoubleBuffered = true;
 
-            // taskbar/alt-tab icon straight from the multi-frame kit ico;
-            // never a GetHicon() rasterized down from the 256 png
+            // taskbar/alt-tab icon and the header mark straight from the
+            // multi-frame kit ico; never a GetHicon() rasterized down
             var icoStream = typeof(MainForm).Assembly.GetManifestResourceStream("img/icon.ico");
             if (icoStream != null)
             {
                 Icon = new Icon(icoStream);
+                _hdrIco = (Icon)Icon.Clone();
                 icoStream.Dispose();
             }
 
-            _tt = new ToolTip { AutoPopDelay = 10000, InitialDelay = 250, ShowAlways = true };
+            _tips = new Dictionary<Control, string>();
+            _tipHooked = new HashSet<Control>();
+            _tipTimer = new System.Windows.Forms.Timer { Interval = 250 };
+            _tipTimer.Tick += TipTick;
+            Deactivate += (s, e) => HideTip();
             _games = CodPaths.Games;
 
             BuildTopBar();
@@ -112,7 +143,7 @@ namespace CodBackupConfig
             BuildBackupsSection();
             BuildFooter();
             ApplyLayout();
-            _lastW = ClientSize.Width;
+            _lastSz = ClientSize;
 
             Load += (s, e) =>
             {
@@ -122,8 +153,15 @@ namespace CodBackupConfig
                 int i = _games.FindIndex(g => g.Key == Prefs.LastGame);
                 SelectGame(i < 0 ? 0 : i);
             };
-            FormClosed += (s, e) => { if (_settle != null) { _settle.Stop(); _settle.Dispose(); _settle = null; } Prefs.Save(); };
-            Shown += (s, e) => StartSettle();
+            FormClosed += (s, e) =>
+            {
+                if (_settle != null) { _settle.Stop(); _settle.Dispose(); _settle = null; }
+                if (_tipTimer != null) { _tipTimer.Stop(); _tipTimer.Dispose(); _tipTimer = null; }
+                HideTip();
+                if (_intro != null) _intro.Skip();
+                Prefs.Save();
+            };
+            Shown += (s, e) => { StartIntro(); StartSettle(); };
         }
 
         // film grain background; backcolor stays flat for resize-flash protection
@@ -144,19 +182,15 @@ namespace CodBackupConfig
                 g.DrawRectangle(p, 0, 0, Width - 1, Height - 1);
             }
 
-            if (_hdrIcon == null) _hdrIcon = Assets.Img("icon-256.png");
-            if (_hdrIcon != null)
-            {
-                var old = g.InterpolationMode;
-                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-                g.DrawImage(_hdrIcon, new Rectangle(Ui.X(M), (hh - Ui.X(20)) / 2, Ui.X(20), Ui.X(20)));
-                g.InterpolationMode = old;
-            }
+            if (_hdrIco != null)
+                g.DrawIcon(_hdrIco, new Rectangle(Ui.X(M), (hh - Ui.X(20)) / 2, Ui.X(20), Ui.X(20)));
 
             int tx = Ui.X(M + 30);
             string ver = "v" + typeof(MainForm).Assembly.GetName().Version.ToString(3);
+            // right cluster (flags + 3 window buttons) owns the far side of
+            // the band; the title may never reach it
             TextRenderer.DrawText(g, T("title"), Ui.Title,
-                new Rectangle(tx, 0, Width - tx - Ui.X(280), hh), Ui.Text,
+                new Rectangle(tx, 0, Width - tx - Ui.X(330), hh), Ui.Text,
                 TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding);
             var tw = TextRenderer.MeasureText(g, T("title"), Ui.Title, Size.Empty, TextFormatFlags.NoPadding);
             TextRenderer.DrawText(g, ver, Ui.Small,
@@ -166,52 +200,257 @@ namespace CodBackupConfig
 
         const int WM_NCLBUTTONDOWN = 0xA1;
         const int HTCAPTION = 0x2;
+        const int WM_CAPTURECHANGED = 0x0210;
         [DllImport("user32.dll")] static extern bool ReleaseCapture();
+        [DllImport("user32.dll")] static extern bool SetCapture(IntPtr h);
         [DllImport("user32.dll")] static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 
-        // dragging the header moves the window the way a native caption would
+        // manual edge/corner resize: in this borderless PMv2 setup the
+        // DefWindowProc sizing loop never starts from HT* pixels, so we drive
+        // the bounds ourselves while WM_NCHITTEST supplies the cursor shapes
+        int _rzCode = 1;
+        Rectangle _rzBounds;
+        Point _rzMouse;
+        Size _rzMax;
+
+        // hit code for a client point; 1 = htclient, 10..17 = the bands
+        int HitCode(Point p)
+        {
+            int b = Ui.X(6);
+            if (p.X <= b && p.Y <= b) return 13;                 // httopleft
+            if (p.X >= Width - b && p.Y <= b) return 14;         // httopright
+            if (p.X <= b && p.Y >= Height - b) return 16;        // htbottomleft
+            if (p.X >= Width - b && p.Y >= Height - b) return 17; // htbottomright
+            if (p.X <= b) return 10;                             // htleft
+            if (p.X >= Width - b) return 11;                     // htright
+            if (p.Y <= b) return 12;                             // httop
+            if (p.Y >= Height - b) return 15;                    // htbottom
+            return 1;                                            // htclient
+        }
+
+        // does a live descendant cover this screen point? the header
+        // buttons sit flush in the top-right corner and must keep their
+        // own hit area over the resize bands
+        static bool ChildUnder(Control root, Point sp)
+        {
+            foreach (Control c in root.Controls)
+            {
+                if (!c.Visible || c.IsDisposed) continue;
+                try
+                {
+                    if (c.RectangleToScreen(c.ClientRectangle).Contains(sp)) return true;
+                }
+                catch { }
+            }
+            return false;
+        }
+
+        // begin a tracked resize from a band press; sp is the press point in
+        // screen coordinates, taken from WM_NCLBUTTONDOWN's lParam
+        void BeginResize(int code, Point sp)
+        {
+            RECT wa = WorkRect();
+            _rzCode = code;
+            _rzBounds = Bounds;
+            _rzMouse = sp;
+            _rzMax = new Size(wa.r - wa.l, wa.b - wa.t);
+        }
+
+        // dragging the header moves the window the way a native caption would;
+        // band presses never land here (they arrive as WM_NCLBUTTONDOWN)
         protected override void OnMouseDown(MouseEventArgs e)
         {
             base.OnMouseDown(e);
-            if (e.Button == MouseButtons.Left && e.Y <= Ui.X(HH))
+            if (e.Button != MouseButtons.Left || e.Y > Ui.X(HH)) return;
+            if (e.Clicks == 2) // double press toggles maximize, native caption way
             {
-                ReleaseCapture();
-                SendMessage(Handle, WM_NCLBUTTONDOWN, (IntPtr)HTCAPTION, IntPtr.Zero);
+                WindowState = WindowState == FormWindowState.Maximized
+                    ? FormWindowState.Normal
+                    : FormWindowState.Maximized;
+                return;
+            }
+            ReleaseCapture();
+            SendMessage(Handle, WM_NCLBUTTONDOWN, (IntPtr)HTCAPTION, IntPtr.Zero);
+        }
+
+        protected override void OnMouseMove(MouseEventArgs e)
+        {
+            base.OnMouseMove(e);
+            if (_rzCode < 10 || _rzCode > 17) return;
+            Point now = PointToScreen(e.Location);
+            int dx = now.X - _rzMouse.X, dy = now.Y - _rzMouse.Y;
+            int minW = MinimumSize.Width, minH = MinimumSize.Height;
+            var r = _rzBounds;
+            if (_rzCode == 10 || _rzCode == 13 || _rzCode == 16)
+            {
+                int nl = _rzBounds.Left + dx, nw = _rzBounds.Width - dx;
+                if (nw < minW) { nw = minW; nl = _rzBounds.Right - minW; }
+                if (nw > _rzMax.Width) { nw = _rzMax.Width; nl = _rzBounds.Left; }
+                r.X = nl; r.Width = nw;
+            }
+            if (_rzCode == 11 || _rzCode == 14 || _rzCode == 17)
+            {
+                int nw = _rzBounds.Width + dx;
+                r.Width = nw < minW ? minW : (nw > _rzMax.Width ? _rzMax.Width : nw);
+            }
+            if (_rzCode == 12 || _rzCode == 13 || _rzCode == 14)
+            {
+                int nt = _rzBounds.Top + dy, nh = _rzBounds.Height - dy;
+                if (nh < minH) { nh = minH; nt = _rzBounds.Bottom - minH; }
+                if (nh > _rzMax.Height) { nh = _rzMax.Height; nt = _rzBounds.Top; }
+                r.Y = nt; r.Height = nh;
+            }
+            if (_rzCode == 15 || _rzCode == 16 || _rzCode == 17)
+            {
+                int nh = _rzBounds.Height + dy;
+                r.Height = nh < minH ? minH : (nh > _rzMax.Height ? _rzMax.Height : nh);
+            }
+            if (r != _rzBounds) Bounds = r;
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+            if (_rzCode >= 10 && _rzCode <= 17)
+            {
+                _rzCode = 1;
+                Capture = false;
             }
         }
 
         const int WM_NCHITTEST = 0x0084;
+        const int WM_GETMINMAXINFO = 0x0024;
+
+        [StructLayout(LayoutKind.Sequential)] struct POINT { public int x, y; }
+        [StructLayout(LayoutKind.Sequential)] struct MINMAXINFO
+        {
+            public POINT ptReserved, ptMaxSize, ptMaxPosition, ptMinTrackSize, ptMaxTrackSize;
+        }
+        [StructLayout(LayoutKind.Sequential)] struct MONITORINFO
+        {
+            public int cbSize;
+            public RECT rcMonitor;
+            public RECT rcWork;
+            public uint dwFlags;
+        }
+        [DllImport("user32.dll")] static extern bool GetMonitorInfo(IntPtr h, ref MONITORINFO mi);
+        [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int w, int hh, uint f);
+
+        // working area of the monitor that owns the window, physical pixels
+        // (this process is PerMonitorV2, so raw user32 rects are physical)
+        RECT WorkRect()
+        {
+            var mi = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
+            IntPtr mon = MonitorFromWindow(Handle, 2);
+            if (mon != IntPtr.Zero && GetMonitorInfo(mon, ref mi) && (mi.rcWork.l != 0 || mi.rcWork.t != 0 || mi.rcWork.r != 0 || mi.rcWork.b != 0))
+                return mi.rcWork;
+            var r = Screen.PrimaryScreen.WorkingArea;
+            return new RECT { l = r.Left, t = r.Top, r = r.Right, b = r.Bottom };
+        }
+
+        // keep the maximized rect pinned to the work area of whatever monitor
+        // owns the window; refreshed on handle creation, moves and dpi
+        // changes so crossing monitor boundaries or scaling never leaves the
+        // frame overhanging the screen or hiding under the taskbar
+        void UpdateMaximizedBounds()
+        {
+            try
+            {
+                RECT wa = WorkRect();
+                MaximizedBounds = new Rectangle(wa.l, wa.t, wa.r - wa.l, wa.b - wa.t);
+            }
+            catch { }
+        }
+
+        protected override void OnResizeBegin(EventArgs e)
+        {
+            base.OnResizeBegin(e);
+            UpdateMaximizedBounds();
+        }
+
+        protected override void OnMove(EventArgs e)
+        {
+            base.OnMove(e);
+            UpdateMaximizedBounds();
+        }
 
         // frameless edge/corner hit targets so the window resizes like a
-        // normal chrome one; a 5px band around the client edge
+        // normal chrome one; a 6px band around the client edge. when
+        // maximized the max position/size are pinned to the work area of
+        // whatever monitor owns the window, so the frame never overhangs
+        // the screen or hides under the taskbar
         protected override void WndProc(ref Message m)
         {
+            // a band press arrives as WM_NCLBUTTONDOWN (NCHITTEST says HT*),
+            // which DefWindowProc's sizing loop would swallow; start our own
+            // tracked resize instead so the bounds flow through Relayout
+            if (m.Msg == WM_NCLBUTTONDOWN)
+            {
+                int hc = m.WParam.ToInt32();
+                if (hc >= 10 && hc <= 17 && WindowState == FormWindowState.Normal)
+                {
+                    BeginResize(hc, new Point(
+                        (short)(m.LParam.ToInt32() & 0xffff),
+                        (short)(m.LParam.ToInt32() >> 16)));
+                    SetCapture(Handle);
+                    return;
+                }
+            }
+            if (m.Msg == WM_CAPTURECHANGED && _rzCode >= 10 && _rzCode <= 17
+                && (long)m.WParam == (long)Handle)
+                _rzCode = 1; // capture lost without button up (alt-tab, menu)
             base.WndProc(ref m);
+            if (m.Msg == WM_GETMINMAXINFO)
+            {
+                var mmi = Marshal.PtrToStructure<MINMAXINFO>(m.LParam);
+                RECT wa = WorkRect();
+                // ptMaxPosition is left at DefWindowProc's prefill: on PMv2
+                // windows the OS treats an overwrite as a delta from that
+                // prefill, which doubled the offset on the left monitor
+                mmi.ptMaxSize.x = wa.r - wa.l;
+                mmi.ptMaxSize.y = wa.b - wa.t;
+                mmi.ptMaxTrackSize.x = wa.r - wa.l;
+                mmi.ptMaxTrackSize.y = wa.b - wa.t;
+                Marshal.StructureToPtr(mmi, m.LParam, false);
+                return;
+            }
+            if (m.Msg == 0x0112 && (m.WParam.ToInt32() & 0xFFF0) == 0xF030)
+            {
+                // PMv2 quirk: DefWindowProc can land the maximized window one
+                // work-area width off on a non-primary monitor. The position
+                // correction is done here, in the window's own (physical)
+                // coordinate space, right after DefWindowProc maximizes it.
+                RECT wa = WorkRect();
+                SetWindowPos(Handle, IntPtr.Zero, wa.l, wa.t, wa.r - wa.l, wa.b - wa.t, 0x0004 | 0x0010);
+            }
             if (m.Msg != WM_NCHITTEST || (int)m.Result != 1) return; // htclient
-            int b = Ui.X(5);
+            if (WindowState == FormWindowState.Maximized) return;   // no bands while maximized
             Point p = PointToClient(new Point(
                 (short)(m.LParam.ToInt32() & 0xffff),
                 (short)(m.LParam.ToInt32() >> 16)));
-            int code = 1;
-            if (p.X <= b && p.Y <= b) code = 14;                // httopleft
-            else if (p.X >= Width - b && p.Y <= b) code = 15;   // httopright
-            else if (p.X <= b && p.Y >= Height - b) code = 16;  // htbodyleft
-            else if (p.X >= Width - b && p.Y >= Height - b) code = 17; // htbodyright
-            else if (p.X <= b) code = 10;                       // htleft
-            else if (p.X >= Width - b) code = 12;                // htright
-            else if (p.Y <= b) code = 11;                        // httop
-            else if (p.Y >= Height - b) code = 13;               // httbottom
-            m.Result = (IntPtr)code;
+            // a visible child owns this pixel (the header buttons sit flush
+            // in the top-right corner): the bands yield to it, or the
+            // close button's outermost strip would start a resize instead
+            // of closing
+            if (ChildUnder(this, PointToScreen(p))) return;
+            m.Result = (IntPtr)HitCode(p);
         }
 
-        // reflow whenever the user drags an edge; vertical stretching stays
-        // owned by LayoutBottom so the list keeps breathing with its rows
+        // reflow on every width OR height change: edge drags, maximize and
+        // restore all flow through WM_SIZE; the cards and list split the
+        // vertical slack
         protected override void OnClientSizeChanged(EventArgs e)
         {
             base.OnClientSizeChanged(e);
-            if (_listBorder == null || ClientSize.Width == _lastW) return;
-            _lastW = ClientSize.Width;
-            ApplyLayout();
+            if (_listBorder == null || ClientSize == _lastSz) return;
+            _lastSz = ClientSize;
+            SuspendLayout();
+            try
+            {
+                _cbSnap.Dismiss(); // an open dropdown cannot outlive its spot
+                ApplyLayout();
+            }
+            finally { ResumeLayout(); }
         }
 
         [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr h, int attr, ref int v, int size);
@@ -219,6 +458,7 @@ namespace CodBackupConfig
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
+            UpdateMaximizedBounds();
             // immersive dark mode for the system menus (taskbar popup, alt-space)
             try
             {
@@ -229,12 +469,28 @@ namespace CodBackupConfig
             catch { }
         }
 
+        protected override void OnDpiChanged(DpiChangedEventArgs e)
+        {
+            base.OnDpiChanged(e);
+            // winforms rescales MinimumSize per axis from the ratio of the
+            // suggested and current bounds, which goes non-uniform whenever the
+            // window was clamped during the transition; reassert the design
+            // minimum and rebuild the layout at the new scale so the clamp
+            // floor stays exact
+            Ui.F = DpiScale();
+            MinimumSize = new Size(Ui.X(920), Ui.X(620));
+            _lastSz = Size.Empty;
+            UpdateMaximizedBounds();
+            ApplyLayout();
+        }
+
         protected override void OnDpiChangedAfterParent(EventArgs e)
         {
             base.OnDpiChangedAfterParent(e);
             // uniform rescale of every control, then rebuild the dynamic part
             Ui.F = DpiScale();
-            _lastW = 0;
+            _lastSz = Size.Empty;
+            UpdateMaximizedBounds();
             ApplyLayout();
         }
 
@@ -242,6 +498,7 @@ namespace CodBackupConfig
         [DllImport("user32.dll")] static extern bool GetClientRect(IntPtr h, out RECT rc);
         [DllImport("user32.dll")] static extern IntPtr MonitorFromWindow(IntPtr h, uint flags);
         [DllImport("shcore.dll")] static extern int GetDpiForMonitor(IntPtr m, int type, out ushort x, out ushort y);
+        [DllImport("user32.dll")] static extern uint GetDpiForWindow(IntPtr h);
 
         // windows can rebaseline a window's dpi shortly after show without
         // delivering any size message (display reconfigured mid-session). the
@@ -266,8 +523,11 @@ namespace CodBackupConfig
                     if (w > 100 && h > 100 &&
                         (Math.Abs(w - ClientSize.Width) > 2 || Math.Abs(h - ClientSize.Height) > 2))
                     {
-                        Ui.F = w / (float)W;
-                        _lastW = 0;
+                        // resync to device reality at the true monitor scale;
+                        // the factor never comes from the width, that doubled
+                        // the layout when startup landed wider than design
+                        Ui.F = RealDpiScale();
+                        _lastSz = Size.Empty;
                         ClientSize = new Size(w, h);
                         ApplyLayout();
                         StopSettle(t);
@@ -282,11 +542,22 @@ namespace CodBackupConfig
                     if (++dpiMiss >= 2)
                     {
                         float f = mdi / 96f;
-                        int nh = (int)Math.Round(ClientSize.Height / Ui.F * f);
-                        Ui.F = f;
-                        _lastW = 0;
-                        ClientSize = new Size(Ui.X(W), nh);
-                        ApplyLayout();
+                        if (WindowState == FormWindowState.Maximized)
+                        {
+                            // the bounds are the work area's; only the scale
+                            // changed, so relayout in place
+                            Ui.F = f;
+                            _lastSz = Size.Empty;
+                            ApplyLayout();
+                        }
+                        else
+                        {
+                            int nh = (int)Math.Round(ClientSize.Height / Ui.F * f);
+                            Ui.F = f;
+                            _lastSz = Size.Empty;
+                            ClientSize = new Size(ClientSize.Width, nh);
+                            ApplyLayout();
+                        }
                         StopSettle(t);
                     }
                     return;
@@ -317,8 +588,9 @@ namespace CodBackupConfig
             if (ReferenceEquals(_settle, t)) _settle = null;
         }
 
-        // frameless keeps sysmenu + minimizebox so the taskbar context menu
-        // (restore / minimize / close) keeps working
+        // frameless keeps sysmenu + minimizebox + maximizebox so the taskbar
+        // context menu (restore / minimize / maximize / close) keeps working
+        const int WS_MAXIMIZEBOX = 0x00010000;
         const int WS_MINIMIZEBOX = 0x00020000;
         const int WS_SYSMENU = 0x00080000;
 
@@ -327,7 +599,7 @@ namespace CodBackupConfig
             get
             {
                 CreateParams cp = base.CreateParams;
-                cp.Style |= WS_MINIMIZEBOX | WS_SYSMENU;
+                cp.Style |= WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU;
                 return cp;
             }
         }
@@ -341,7 +613,7 @@ namespace CodBackupConfig
             _btnEn = new FlagButton
             {
                 Width = 60, Height = 28, Text = "EN",
-                Location = new Point(W - M - 228, 8),
+                Location = new Point(W - M - 248, 8),
                 Font = Ui.Small,
                 Flag = Assets.Img("flag-en.png"),
             };
@@ -350,13 +622,19 @@ namespace CodBackupConfig
             _btnPt = new FlagButton
             {
                 Width = 60, Height = 28, Text = "PT",
-                Location = new Point(W - M - 160, 8),
+                Location = new Point(W - M - 180, 8),
                 Font = Ui.Small,
                 Flag = Assets.Img("flag-pt.png"),
             };
             _btnPt.Click += (s, e) => SetLang("pt");
 
             _btnMin = new WindowButton(WindowButton.Kind.Minimize)
+            {
+                Location = new Point(W - M - 132, 0),
+                Size = new Size(44, HH),
+            };
+
+            _btnMax = new WindowButton(WindowButton.Kind.Maximize)
             {
                 Location = new Point(W - M - 88, 0),
                 Size = new Size(44, HH),
@@ -371,6 +649,7 @@ namespace CodBackupConfig
             Controls.Add(_btnEn);
             Controls.Add(_btnPt);
             Controls.Add(_btnMin);
+            Controls.Add(_btnMax);
             Controls.Add(_btnClose);
         }
 
@@ -503,7 +782,7 @@ namespace CodBackupConfig
             _txtTarget = new TextBox
             {
                 Location = new Point(PAD, 84), Size = new Size(tW, 26),
-                BackColor = Ui.Panel, ForeColor = Ui.Text, Font = Ui.Mono(9.5f),
+                BackColor = Ui.Panel, ForeColor = Ui.Text, Font = Ui.Num(9.5f),
                 BorderStyle = BorderStyle.FixedSingle,
             };
             _restorePanel.Controls.Add(_txtTarget);
@@ -603,110 +882,116 @@ namespace CodBackupConfig
         }
 
         // positions every control for the current client size + Ui.F; runs
-        // from the constructor, on language switches, on dpi changes and on
-        // edge resizes. widths derive from the live client size, not from W,
-        // so dragging an edge reflows the whole layout
+        // from the constructor, on language switches, on dpi changes, on
+        // list changes and on every resize. widths derive from the live
+        // client size, so dragging any edge reflows the whole layout; extra
+        // height splits between the game cards and the account list and the
+        // window size is never rewritten here
         void ApplyLayout()
         {
-            // floor to the live client width: a dpi transition can hand us a
-            // narrower window than 920*scale and the controls must fit it
-            int cw = ClientSize.Width;
-            int m = Ui.X(M), gap = Ui.X(GAP);
-            _panelW = (cw - 2 * m - gap) / 2;
+            int cw = ClientSize.Width, ch = ClientSize.Height;
+            int m = Ui.X(M), gap = Ui.X(GAP), hh = Ui.X(HH);
+            int panelW = (cw - 2 * m - gap) / 2;
             int cardW = (cw - 2 * m - 2 * gap) / 3;
 
-            // header cluster, right-anchored so it survives any width
+            // header cluster, right-anchored so it survives any width; the
+            // maximize glyph depends on window state, refresh it each pass
+            _btnMax.Invalidate();
             _btnClose.Location = new Point(cw - Ui.X(44), 0);
-            _btnClose.Size = new Size(Ui.X(44), Ui.X(HH));
-            _btnMin.Location = new Point(cw - Ui.X(88), 0);
-            _btnMin.Size = new Size(Ui.X(44), Ui.X(HH));
-            _btnPt.Location = new Point(cw - m - Ui.X(160), Ui.X(8));
+            _btnClose.Size = new Size(Ui.X(44), hh);
+            _btnMax.Location = new Point(cw - Ui.X(88), 0);
+            _btnMax.Size = new Size(Ui.X(44), hh);
+            _btnMin.Location = new Point(cw - Ui.X(132), 0);
+            _btnMin.Size = new Size(Ui.X(44), hh);
+            _btnPt.Location = new Point(cw - m - Ui.X(180), Ui.X(8));
             _btnPt.Size = new Size(Ui.X(60), Ui.X(28));
-            _btnEn.Location = new Point(cw - m - Ui.X(228), Ui.X(8));
+            _btnEn.Location = new Point(cw - m - Ui.X(248), Ui.X(8));
             _btnEn.Size = new Size(Ui.X(60), Ui.X(28));
+
+            // extra height above the design minimum splits: a quarter grows
+            // the game cards toward their 200px cap, the rest lengthens the
+            // account list, so a maximized window has no dead gap
+            int below = Ui.X(14 + 18 + PANEL_H + 14 + 28 + 12 + 12 + 16 + 14);
+            int minListH = Ui.X(2 * 26 + 8);
+            int extra = ch - (Ui.X(230 + HH) + minListH + below);
+            int cardBonus = extra > 0 ? Math.Min((int)Math.Round(extra * 0.25f), Ui.X(200 - CARD_H)) : 0;
+            int cardH = Ui.X(CARD_H) + cardBonus;
+            int cardsY = Ui.X(74 + HH);
+            int secAccY = cardsY + cardH + Ui.X(14);
+            int listTop = secAccY + Ui.X(26); // floor under the refresh row
 
             _secGame.Location = new Point(m, Ui.X(56 + HH));
             for (int i = 0; i < _cards.Length; i++)
             {
-                _cards[i].Location = new Point(m + i * (cardW + gap), Ui.X(74 + HH));
-                _cards[i].Size = new Size(cardW, Ui.X(CARD_H));
+                _cards[i].Location = new Point(m + i * (cardW + gap), cardsY);
+                _cards[i].Size = new Size(cardW, cardH);
             }
+            _cards[2].Width = (cw - m) - _cards[2].Left; // flush right edge
 
-            _secAccounts.Location = new Point(m, Ui.X(210 + HH));
-            _btnRefresh.Size = new Size(FitWidth(_btnRefresh), Ui.X(26));
-            _btnRefresh.Location = new Point(cw - m - _btnRefresh.Width, Ui.X(204 + HH));
-            _listBorder.Location = new Point(m, Ui.X(230 + HH));
-            _listBorder.Size = new Size(cw - 2 * m, Ui.X(116));
+            _secAccounts.Location = new Point(m, secAccY);
+            int refW = FitWidth(_btnRefresh);
+            _btnRefresh.Size = new Size(refW, Ui.X(26));
+            _btnRefresh.Location = new Point(cw - m - refW, secAccY - Ui.X(6));
 
-            // everything below the list is vertical-only and lives in
-            // LayoutBottom; size the panels here so its x math has the live
-            // panel width to work with
-            _savePanel.Size = new Size(_panelW, Ui.X(PANEL_H));
-            _restorePanel.Size = new Size(_panelW, Ui.X(PANEL_H));
-            LayoutPanels();
-            LayoutBottom();
-        }
+            // the list takes whatever vertical space is left between its
+            // top and the fixed stack below it (section label, action
+            // panels, folder row, footer line, status, bottom pad)
+            int listH = Math.Max(minListH, ch - listTop - below);
+            _lb.ItemHeight = Ui.X(26);
+            _listBorder.Location = new Point(m, listTop);
+            _listBorder.Size = new Size(cw - 2 * m, listH);
 
-        // children of the two action panels, in panel coordinates. hint and
-        // note labels span the full panel width with ellipsis, so no text
-        // overflows its box in either language
-        void LayoutPanels()
-        {
-            int pad = Ui.X(PAD);
-            int avail = _panelW - 2 * pad;
-            int gap = Ui.X(8);
-
-            _saveTag.Location = new Point(pad, Ui.X(12));
-            _saveHint.Location = new Point(pad, Ui.X(30));
-            _saveHint.Size = new Size(avail, Ui.X(14));
-            _txtName.Location = new Point(pad, Ui.X(50));
-            _txtName.Size = new Size(avail, Ui.X(26));
-            _saveNote.Location = new Point(pad, Ui.X(90));
-            _saveNote.Size = new Size(avail, Ui.X(14));
-
-            // backup + lock fit their labels; when both together would spill
-            // past the panel they fall back to even 50/50 columns
-            int wB = FitWidth(_btnBackup), wL = FitWidth(_btnLock);
-            if (wB + wL + gap > avail) { wB = (avail - gap) / 2; wL = avail - gap - wB; }
-            _btnBackup.Location = new Point(pad, Ui.X(BTN_Y));
-            _btnBackup.Size = new Size(wB, Ui.X(28));
-            _btnLock.Location = new Point(pad + wB + gap, Ui.X(BTN_Y));
-            _btnLock.Size = new Size(wL, Ui.X(28));
-
-            _restoreTag.Location = new Point(pad, Ui.X(12));
-            _restoreHint.Location = new Point(pad, Ui.X(30));
-            _restoreHint.Size = new Size(avail, Ui.X(14));
-            _cbSnap.Location = new Point(pad, Ui.X(50));
-            _cbSnap.Size = new Size(avail, Ui.X(26));
-            _txtTarget.Location = new Point(pad, Ui.X(84));
-            _txtTarget.Size = new Size(avail, Ui.X(26));
-            _chkReplace.Location = new Point(pad, Ui.X(112));
-            _chkReplace.Size = new Size(avail, Ui.X(16));
-            _btnRestore.Location = new Point(pad, Ui.X(BTN_Y));
-            _btnRestore.Size = new Size(avail, Ui.X(28));
-        }
-
-        // stretch or shrink the window so the list only takes as much
-        // space as it has accounts in it, then re-anchor the backups
-        // section, folder row and footer underneath it
-        void LayoutBottom()
-        {
-            int m = Ui.X(M), gap = Ui.X(GAP);
-            int rowH = Ui.X(26);
-            int rows = Math.Min(Math.Max(_accounts.Count, 1), 4);
-            _lb.ItemHeight = rowH;
-            _listBorder.Height = rows * rowH + Ui.X(8);
-
-            int secY = _listBorder.Bottom + Ui.X(14);
+            int secY = listTop + listH + Ui.X(14);
             _secBackups.Location = new Point(m, secY);
 
             int pY = secY + Ui.X(18);
             _savePanel.Location = new Point(m, pY);
-            _restorePanel.Location = new Point(m + _panelW + gap, pY);
+            _savePanel.Size = new Size(panelW, Ui.X(PANEL_H));
+            _restorePanel.Location = new Point(m + panelW + gap, pY);
+            _restorePanel.Size = new Size((cw - m) - _restorePanel.Left, Ui.X(PANEL_H));
 
-            int uY = pY + _savePanel.Height + Ui.X(14);
+            // children of both action panels, in panel coordinates; hints
+            // and notes span the full inner width with ellipsis, so no text
+            // overflows its box in either language
+            int pad = Ui.X(PAD);
+            int inner = panelW - 2 * pad;
+            int igap = Ui.X(8);
+            _saveTag.Location = new Point(pad, Ui.X(12));
+            _saveHint.Location = new Point(pad, Ui.X(30));
+            _saveHint.Size = new Size(inner, Ui.X(14));
+            _txtName.Location = new Point(pad, Ui.X(50));
+            _txtName.Size = new Size(inner, Ui.X(26));
+            _saveNote.Location = new Point(pad, Ui.X(90));
+            _saveNote.Size = new Size(inner, Ui.X(14));
+
+            // backup + lock always split the row in even halves: the widest
+            // pt-br / en labels are measured short enough for either
+            int half = (inner - igap) / 2;
+            _btnBackup.Location = new Point(pad, Ui.X(BTN_Y));
+            _btnBackup.Size = new Size(half, Ui.X(28));
+            _btnLock.Location = new Point(pad + half + igap, Ui.X(BTN_Y));
+            _btnLock.Size = new Size(inner - igap - half, Ui.X(28));
+
+            _restoreTag.Location = new Point(pad, Ui.X(12));
+            _restoreHint.Location = new Point(pad, Ui.X(30));
+            _restoreHint.Size = new Size(inner, Ui.X(14));
+            _cbSnap.Location = new Point(pad, Ui.X(50));
+            _cbSnap.Size = new Size(inner, Ui.X(26));
+
+            // target id + replace checkbox share one row; the checkbox is
+            // measured from its real label so it never clips or leaves a
+            // dead zone and the textbox fills whatever is left
+            int chkW = ChkWidth(_chkReplace);
+            _txtTarget.Location = new Point(pad, Ui.X(84));
+            _txtTarget.Size = new Size(inner - chkW - igap, Ui.X(26));
+            _chkReplace.Location = new Point(pad + inner - chkW, Ui.X(84));
+            _chkReplace.Size = new Size(chkW, Ui.X(26));
+            _btnRestore.Location = new Point(pad, Ui.X(BTN_Y));
+            _btnRestore.Size = new Size(inner, Ui.X(28));
+
+            int uY = pY + Ui.X(PANEL_H) + Ui.X(14);
             // folder row: buttons fit their labels, 50/50 when both spill
-            int avail = ClientSize.Width - 2 * m;
+            int avail = cw - 2 * m;
             int wP = FitWidth(_btnPlayers), wK = FitWidth(_btnBackups);
             if (wP + wK + gap > avail) { wP = (avail - gap) / 2; wK = avail - gap - wP; }
             _btnPlayers.Location = new Point(m, uY);
@@ -716,11 +1001,19 @@ namespace CodBackupConfig
 
             int lY = uY + Ui.X(28) + Ui.X(12);
             _footerLine.Location = new Point(m, lY);
-            _footerLine.Width = ClientSize.Width - 2 * m;
+            _footerLine.Width = avail;
             _status.Location = new Point(m, lY + Ui.X(12));
-            _status.Size = new Size(ClientSize.Width - 2 * m, Ui.X(16));
+            _status.Size = new Size(avail, Ui.X(16));
 
-            ClientSize = new Size(ClientSize.Width, lY + Ui.X(42));
+            // an open snapshot dropdown follows its host across resizes
+            _cbSnap.Reposition();
+        }
+
+        // checkbox hit width: real label + box + padding around it
+        static int ChkWidth(CheckBox c)
+        {
+            int tw = TextRenderer.MeasureText(c.Text, c.Font, Size.Empty, TextFormatFlags.NoPadding).Width;
+            return tw + Ui.X(13) + Ui.X(7) + Ui.X(6);
         }
 
         void UpdateSaveHint()
@@ -804,7 +1097,7 @@ namespace CodBackupConfig
             if (a != null) _txtTarget.Text = a.Id;
             UpdateLockButton();
             UpdateSaveHint();
-            LayoutBottom();
+            ApplyLayout();
             _lbPrevSel = _lb.SelectedIndex;
             _lb.Invalidate();
         }
@@ -812,8 +1105,8 @@ namespace CodBackupConfig
         void UpdateLockButton()
         {
             var a = SelAcct();
-            // LockedCount tracks the s.1.0.* settings family only, so any
-            // locked setting already means "this account is locked"
+            // LockedCount tracks the settings files only (all files except
+            // .swp swap files), so any locked setting means "this account is locked"
             bool locked = a != null && a.LockedCount > 0;
             // icon matches the action the button will perform
             _btnLock.Text = T(locked ? "btn.lockoff" : "btn.lockon");
@@ -1006,26 +1299,27 @@ namespace CodBackupConfig
             FillList();
             PopulateSnapshots();
 
-            _tt.SetToolTip(_btnEn, T("tip.en"));
-            _tt.SetToolTip(_btnPt, T("tip.pt"));
-            _tt.SetToolTip(_btnMin, T("tip.min"));
-            _tt.SetToolTip(_btnClose, T("tip.close"));
-            _tt.SetToolTip(_btnRefresh, T("tip.refresh"));
-            _tt.SetToolTip(_btnBackup, T("tip.backup"));
-            _tt.SetToolTip(_btnRestore, T("tip.restore"));
-            _tt.SetToolTip(_btnLock, T("tip.lock"));
-            _tt.SetToolTip(_btnPlayers, T("tip.players"));
-            _tt.SetToolTip(_btnBackups, T("tip.backups"));
-            _tt.SetToolTip(_txtName, T("tip.name"));
-            _tt.SetToolTip(_cbSnap, T("tip.snapshot"));
-            _tt.SetToolTip(_txtTarget, T("tip.target"));
-            _tt.SetToolTip(_chkReplace, T("tip.replace"));
-            _tt.SetToolTip(_lb, T("list.tip"));
+            Tip(_btnEn, "tip.en");
+            Tip(_btnPt, "tip.pt");
+            Tip(_btnMin, "tip.min");
+            Tip(_btnMax, "tip.max");
+            Tip(_btnClose, "tip.close");
+            Tip(_btnRefresh, "tip.refresh");
+            Tip(_btnBackup, "tip.backup");
+            Tip(_btnRestore, "tip.restore");
+            Tip(_btnLock, "tip.lock");
+            Tip(_btnPlayers, "tip.players");
+            Tip(_btnBackups, "tip.backups");
+            Tip(_txtName, "tip.name");
+            Tip(_cbSnap, "tip.snapshot");
+            Tip(_txtTarget, "tip.target");
+            Tip(_chkReplace, "tip.replace");
+            Tip(_lb, "list.tip");
             for (int i = 0; i < _cards.Length; i++)
             {
                 _cards[i].BrowseButton.Text = T("card.browse");
-                _tt.SetToolTip(_cards[i], T("tip.game"));
-                _tt.SetToolTip(_cards[i].BrowseButton, T("tip.browse"));
+                Tip(_cards[i], "tip.game");
+                Tip(_cards[i].BrowseButton, "tip.browse");
             }
 
             _lb.Invalidate();
@@ -1036,6 +1330,118 @@ namespace CodBackupConfig
             // labels changed (en/pt): re-fit every button and label to the
             // new text before any of it can clip
             ApplyLayout();
+        }
+
+        // -------------------------------------------------------- tooltips
+        // winforms' native tooltip forces segoe ui; the tip is a borderless
+        // popup painted in hitmarker instead. labels resolve through l10n
+        // keys at show time, so a language switch never leaves a stale tip
+
+        void Tip(Control c, string key)
+        {
+            if (c == null) return;
+            _tips[c] = key;
+            if (_tipHooked.Add(c))
+            {
+                c.MouseEnter += TipEnter;
+                c.MouseLeave += TipLeave;
+            }
+        }
+
+        void TipEnter(object s, EventArgs e)
+        {
+            Control c = s as Control;
+            HideTip();
+            if (c == null) return;
+            _tipHot = c;
+            _tipTimer.Interval = 250;
+            _tipTimer.Stop();
+            _tipTimer.Start();
+        }
+
+        void TipLeave(object s, EventArgs e)
+        {
+            // a leave can arrive after a newer control's enter queued its own
+            // tick; only the current hot control may cancel the pending show
+            if (!ReferenceEquals(_tipHot, s)) return;
+            _tipHot = null;
+            _tipTimer.Stop();
+            HideTip();
+        }
+
+        void TipTick(object s, EventArgs e)
+        {
+            _tipTimer.Stop();
+            if (_tipHot == null) return;
+            if (_tipPop == null || !_tipPop.Visible)
+            {
+                ShowTip();
+                _tipShown = DateTime.Now;
+                _tipTimer.Interval = 10000; // auto-hide once the 10s expire
+                _tipTimer.Start();
+            }
+            else if ((DateTime.Now - _tipShown).TotalSeconds >= 10)
+                HideTip();
+        }
+
+        void ShowTip()
+        {
+            string key;
+            if (_tipHot == null || IsDisposed || !_tips.TryGetValue(_tipHot, out key)) return;
+            string text = T(key);
+            if (string.IsNullOrEmpty(text)) return;
+            if (_tipPop == null) _tipPop = new TipPopup();
+            _tipPop.SetText(text);
+            Rectangle host = _tipHot.RectangleToScreen(new Rectangle(0, 0, _tipHot.Width, _tipHot.Height));
+            _tipPop.ShowAt(_tipPop.PreferredAt(host));
+        }
+
+        void HideTip()
+        {
+            if (_tipPop != null && !_tipPop.IsDisposed && _tipPop.Visible) _tipPop.Hide();
+            _tipHot = null;
+            _tipShown = DateTime.MinValue;
+        }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            // esc/space skip the intro, esc always clears a showing tip
+            if (_intro != null && _intro.Visible &&
+                (keyData == Keys.Escape || keyData == Keys.Space))
+            {
+                _intro.Skip();
+                return true;
+            }
+            if (keyData == Keys.Escape) HideTip();
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+        // -------------------------------------------------------------- intro
+        // the kit gif plays once over the whole client area at startup,
+        // memory only, at the file's own frame delays
+
+        void StartIntro()
+        {
+            if (DesignMode) return;
+            _intro = new IntroOverlay();
+            if (!_intro.LoadGif())
+            {
+                _intro.Dispose();
+                _intro = null;
+                return;
+            }
+            Controls.Add(_intro);
+            _intro.BringToFront();
+            _intro.Done += (s, e) =>
+            {
+                if (_intro != null)
+                {
+                    Controls.Remove(_intro);
+                    _intro.Dispose();
+                    _intro = null;
+                }
+            };
+            _intro.Play();
         }
 
         // -------------------------------------------------------------- list draw
@@ -1060,7 +1466,14 @@ namespace CodBackupConfig
 
             var a = _accounts[e.Index];
             int bx = e.Bounds.X, by = e.Bounds.Y + Ui.X(6);
+            int bw = e.Bounds.Width;
             int tx = bx + Ui.X(12);
+            // columns stay proportional to the live row width, floored so
+            // they never pile up wide or clip narrow; the id gets its own
+            // ellipsised cell up to the platform column
+            int colP = Math.Max(tx + Ui.X(64), bx + (int)(bw * 0.30f));
+            int colF = Math.Max(colP + Ui.X(72), bx + (int)(bw * 0.52f));
+            int colL = Math.Max(colF + Ui.X(56), bx + (int)(bw * 0.74f));
             var mark = PlatformMark(a.Platform);
             if (mark != null)
             {
@@ -1070,16 +1483,208 @@ namespace CodBackupConfig
                 g.InterpolationMode = old;
                 tx = bx + Ui.X(32);
             }
-            Col(g, a.Id, Ui.Text, tx, by, Ui.Mono(9.5f));
+            TextRenderer.DrawText(g, a.Id, Ui.Num(9.5f),
+                new Rectangle(tx, by, colP - tx - Ui.X(8), Ui.X(16)), Ui.Text,
+                TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPadding);
             Col(g, a.Platform,
                 a.Platform == "unknown" || a.Platform.EndsWith("?") ? Ui.Faint : Ui.Accent,
-                bx + Ui.X(240), by);
-            Col(g, string.Format(T("list.files"), a.FileCount), sel ? Ui.Text : Ui.Dim, bx + Ui.X(430), by);
+                colP, by);
+            Col(g, string.Format(T("list.files"), a.FileCount), sel ? Ui.Text : Ui.Dim, colF, by);
             if (a.LockedCount > 0)
-                Col(g, string.Format(T("list.locked"), a.LockedCount), sel ? Ui.Text : Ui.Faint, bx + Ui.X(560), by);
+                Col(g, string.Format(T("list.locked"), a.LockedCount), sel ? Ui.Text : Ui.Faint, colL, by);
         }
 
         static void Col(Graphics g, string s, Color c, int x, int y, Font f = null) =>
             TextRenderer.DrawText(g, s, f ?? Ui.Body, new Point(x, y), c, TextFormatFlags.NoPadding);
+    }
+
+    // one-shot intro: the embedded kit gif over the whole client area,
+    // memory only, playing once at the file's own frame delays
+    class IntroOverlay : Panel
+    {
+        Image _gif;
+        Stream _keepAlive; // image.fromstream keeps the stream alive for life
+        int[] _ms;
+        int _frame;
+        int _acc;
+        System.Windows.Forms.Timer _t;
+        bool _done;
+
+        public event EventHandler Done;
+
+        public IntroOverlay()
+        {
+            Dock = DockStyle.Fill;
+            BackColor = Ui.Bg;
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
+                     ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
+            MouseClick += (s, e) => Skip();
+        }
+
+        public bool LoadGif()
+        {
+            Stream s = typeof(MainForm).Assembly.GetManifestResourceStream("img/intro.gif");
+            if (s == null) return false;
+            try
+            {
+                _gif = Image.FromStream(s);
+                _keepAlive = s;
+                _ms = FrameDelays(_gif);
+                return true;
+            }
+            catch
+            {
+                if (_gif != null) _gif.Dispose();
+                s.Dispose();
+                return false;
+            }
+        }
+
+        // gif delay table (property 0x5100, centiseconds); zero entries
+        // mean 100ms per the spec, and a single frame without a table
+        // holds the whole file duration (~2.1s)
+        static int[] FrameDelays(Image img)
+        {
+            try
+            {
+                if (img.FrameDimensionsList.Length > 0)
+                {
+                    int n = img.GetFrameCount(new FrameDimension(img.FrameDimensionsList[0]));
+                    byte[] tab = null;
+                    foreach (var p in img.PropertyItems)
+                        if (p.Id == 0x5100) { tab = p.Value; break; }
+                    var list = new List<int>(n);
+                    for (int f = 0; f < n; f++)
+                    {
+                        int cs = 0;
+                        if (tab != null && f * 2 + 1 < tab.Length)
+                            cs = tab[f * 2] | (tab[f * 2 + 1] << 8);
+                        list.Add(tab == null && n == 1 ? 2100 : (cs == 0 ? 100 : cs * 10));
+                    }
+                    return list.ToArray();
+                }
+            }
+            catch { }
+            return new[] { 2100 };
+        }
+
+        public void Play()
+        {
+            _t = new System.Windows.Forms.Timer { Interval = 30 };
+            _t.Tick += Tick;
+            _t.Start();
+            Invalidate();
+        }
+
+        void Tick(object s, EventArgs e)
+        {
+            _acc += 30;
+            while (_frame < _ms.Length && _acc >= _ms[_frame])
+            {
+                _acc -= _ms[_frame];
+                _frame++;
+            }
+            if (_frame >= _ms.Length) { Skip(); return; }
+            Invalidate();
+        }
+
+        public void Skip()
+        {
+            if (_done) return;
+            _done = true;
+            if (_t != null) { _t.Stop(); _t.Dispose(); _t = null; }
+            if (Done != null) Done(this, EventArgs.Empty);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            e.Graphics.Clear(Ui.Bg);
+            if (_gif != null) Img.Fit(e.Graphics, _gif, _frame, ClientRectangle);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                if (_t != null) { _t.Stop(); _t.Dispose(); }
+                if (_gif != null) _gif.Dispose();
+                if (_keepAlive != null) _keepAlive.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+    }
+
+    // borderless hitmarker tooltip bubble; toolwindow + noactivate keeps it
+    // out of alt-tab and off the activation chain
+    class TipPopup : Form
+    {
+        string _text = "";
+
+        public TipPopup()
+        {
+            FormBorderStyle = FormBorderStyle.None;
+            StartPosition = FormStartPosition.Manual;
+            ShowInTaskbar = false;
+            TopMost = true;
+            BackColor = Ui.PanelHi;
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint |
+                     ControlStyles.OptimizedDoubleBuffer, true);
+        }
+
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams cp = base.CreateParams;
+                cp.ExStyle |= 0x0080 | 0x08000000; // WS_EX_TOOLWINDOW | NOACTIVATE
+                return cp;
+            }
+        }
+
+        public void SetText(string text)
+        {
+            _text = text ?? "";
+            // wrap long hints instead of clipping them mid-word
+            int maxW = Ui.X(320);
+            Size ts = TextRenderer.MeasureText(_text, Ui.Small,
+                new Size(maxW, Ui.X(600)), TextFormatFlags.WordBreak | TextFormatFlags.NoPadding);
+            ClientSize = new Size(Math.Min(ts.Width, maxW) + Ui.X(20), ts.Height + Ui.X(12));
+        }
+
+        // under the host, flipping above when the screen runs out; clamped
+        // into the owning work area either way
+        public Point PreferredAt(Rectangle host)
+        {
+            Point p = new Point(host.X, host.Bottom + Ui.X(6));
+            Rectangle wa = Screen.FromRectangle(host).WorkingArea;
+            if (p.Y + Height > wa.Bottom) p.Y = host.Top - Height - Ui.X(6);
+            if (p.Y < wa.Top) p.Y = wa.Top;
+            if (p.X < wa.Left) p.X = wa.Left;
+            if (p.X + Width > wa.Right) p.X = wa.Right - Width;
+            return p;
+        }
+
+        public void ShowAt(Point p)
+        {
+            Location = p;
+            // managed Visible can outlive the native window state after an
+            // aborted first show; reconcile before re-showing
+            if (Visible && IsHandleCreated && !IsWindowVisible(Handle)) Hide();
+            if (!Visible) Show();
+            BringToFront();
+        }
+
+        [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            Graphics g = e.Graphics;
+            using (var b = new SolidBrush(Ui.PanelHi)) g.FillRectangle(b, ClientRectangle);
+            using (var p = new Pen(Ui.Line))
+                g.DrawRectangle(p, 0, 0, Width - 1, Height - 1);
+            TextRenderer.DrawText(g, _text, Ui.Small,
+                new Rectangle(Ui.X(10), Ui.X(6), ClientSize.Width - Ui.X(20), ClientSize.Height - Ui.X(12)),
+                Ui.Text, TextFormatFlags.WordBreak | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        }
     }
 }
