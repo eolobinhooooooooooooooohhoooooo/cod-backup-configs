@@ -130,11 +130,12 @@ namespace CodBackupConfig
             return (copied, skipped);
         }
 
-        // flip read-only on the s.1.0.* settings family of one account
+        // flip read-only on the settings files of one account (everything
+        // except .swp swap files — see CodPaths.IsSettingsFile)
         public static (bool lockedNow, int count) ToggleSettingsLock(string accountDir)
         {
             var files = Directory.GetFiles(accountDir)
-                .Where(f => Path.GetFileName(f).StartsWith("s.1.0.", StringComparison.OrdinalIgnoreCase))
+                .Where(f => CodPaths.IsSettingsFile(Path.GetFileName(f)))
                 .ToList();
             if (files.Count == 0) return (false, 0);
 
