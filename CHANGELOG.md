@@ -13,7 +13,8 @@ First public version.
   Warfare 4 across Battle.net, Steam and Xbox PC accounts (no typing paths).
 - Back up an account into a dated snapshot, restore any snapshot into any
   account. Copy only — nothing is ever moved or deleted.
-- Lock/unlock the graphic-settings files (`s.1.0.*`) as read-only in one click.
+- Lock/unlock every settings file of an account (all files except `.swp` swap
+  files) as read-only in one click.
 - English and Portuguese interface, switchable at runtime.
 - Dark minimalist UI with official platform marks, game lockups and the full
   six-face Hitmarker family (embedded, memory-only); subtle deterministic

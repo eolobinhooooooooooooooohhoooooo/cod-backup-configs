@@ -27,7 +27,7 @@
 ## ⚡ How It Works
 
 <div align="center">
-  <img src="docs/workflow.svg" alt="Three-step copy-only workflow: Auto-detect accounts, save dated local snapshot, restore to any numeric ID or lock s.1.0.* settings read-only" width="100%" />
+  <img src="docs/workflow.svg" alt="Three-step copy-only workflow: auto-detect accounts, save a dated local snapshot, restore to any numeric ID, or lock every settings file read-only (".swp" swap files excluded)" width="100%" />
 </div>
 
 Cod Backup Configs is **100% file-based and copy-only**. It never injects into game memory, never touches binaries, never uploads telemetry, and never deletes source files.
@@ -40,7 +40,7 @@ Cod Backup Configs is **100% file-based and copy-only**. It never injects into g
 | :--- | :--- | :--- |
 | **Call of Duty Titles** | **Black Ops 6** · **Black Ops 7** · **Modern Warfare 4** | Auto-detects `players` directories per title + manual folder picker fallback |
 | **PC Storefronts** | **Battle.net** · **Steam** · **Xbox PC** | Platform inferred from numeric account ID shape (`SteamID64`, `Battle.net`, Xbox) |
-| **Protected Configs** | `s.1.0.*` graphics & profile files | Instant `ReadOnly` attribute toggle across all `s.1.0.*` files in an account |
+| **Protected Configs** | Every settings file of an account (`.swp` swap files excluded) | Instant `ReadOnly` attribute toggle across all account files — `s.1.0.*`, `g.cod25.*`, `g.cod26.*`, whatever the title names them |
 
 ---
 
@@ -50,7 +50,7 @@ Cod Backup Configs is **100% file-based and copy-only**. It never injects into g
 - **Auto-Detection Across Accounts** — Discovers detected numeric account directories under local Call of Duty `players` paths with one-click refresh and file/lock counters.
 - **Dated Copy-Only Snapshots** — Saves full account configuration folders into timestamped snapshots with optional custom labels. Original folders remain untouched.
 - **Cross-Account & Cross-Platform Migration** — Restore any saved snapshot into a different numeric account ID (e.g., Battle.net → Steam or fresh alt IDs), with an explicit toggle before overwriting existing files.
-- **One-Click Read-Only Lock** — Prevents game patches or crashes from resetting your tuned graphics and input `s.1.0.*` files. Unlock anytime in one click.
+- **One-Click Read-Only Lock** — Prevents game patches or crashes from resetting your tuned graphics and input. One click marks every settings file of the account (`s.1.0.*`, `g.cod25.*`, `g.cod26.*`, …) read-only — `.swp` swap files stay writable. Unlock anytime in one click.
 - **Live Language Switch** — Instant runtime switch between **English** and **Português (BR)** via top-right flags.
 
 ---
@@ -72,7 +72,7 @@ Cod Backup Configs is **100% file-based and copy-only**. It never injects into g
 3. Pick an account from the list:
    - **BACKUP ACCOUNT** — Saves a dated snapshot of the selected account.
    - **RESTORE SNAPSHOT** — Pick a snapshot, verify the target numeric ID (or enter a new ID to stage a fresh profile), and restore.
-   - **LOCK SETTINGS / UNLOCK SETTINGS** — Toggles Windows `ReadOnly` on all `s.1.0.*` config files in that account.
+   - **LOCK SETTINGS / UNLOCK SETTINGS** — Toggles Windows `ReadOnly` on every settings file in that account (all `s.1.0.*`, `g.cod25.*`, `g.cod26.*` files; `.swp` swap files are left alone).
 
 ---
 
