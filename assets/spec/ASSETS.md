@@ -105,9 +105,9 @@ its right. Usage map:
 | Button | Icon |
 |---|---|
 | REFRESH | ic-refresh |
-| BACK UP THIS ACCOUNT (BACKUP ACCOUNT) | ic-backup |
-| RESTORE A SNAPSHOT (RESTORE SNAPSHOT) | ic-restore |
-| LOCK SETTINGS | ic-lock / ic-unlock, **swapped dynamically** with lock state |
+| SAVE PRESET (button and section tag) | ic-backup |
+| APPLY PRESET (button and section tag) | ic-restore |
+| LOCK CONFIGS / UNLOCK CONFIGS | ic-lock / ic-unlock, **swapped dynamically** with lock state |
 | OPEN PLAYERS FOLDER / OPEN BACKUPS FOLDER | ic-folder |
 
 Acceptance (all six judged as **one set**):

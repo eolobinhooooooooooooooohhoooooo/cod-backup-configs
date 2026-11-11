@@ -5,6 +5,22 @@ valid SemVer): each tag (`v1.11.10`, …) marks a published release of the
 single-file exe. The v-badge in the app reads the assembly version, so the
 header always matches the build.
 
+## [1.11.11] - 2026-11-11
+
+Plain-language preset workflow:
+
+- Saved copies are now called presets everywhere: `SAVE PRESET`,
+  `APPLY PRESET`, section header `PRESETS` (EN and PT).
+- Applying a preset no longer needs a typed account id: the destination is a
+  dropdown of the detected accounts with platform marks. It follows the
+  selection in the account list, picking a preset fills in that preset's
+  source account, and saving a preset auto-selects it in the list.
+- Lock button reads `LOCK CONFIGS` / `UNLOCK CONFIGS` (same behavior: every
+  settings file except `.swp` swap files toggled read-only).
+- Account list and preset picker are owner-drawn dark lists with themed
+  scroll track and thumb — no white Win32 scrollbar, four full rows visible
+  unmaximized.
+
 ## [1.11.10] - 2026-11-10
 
 First public version.

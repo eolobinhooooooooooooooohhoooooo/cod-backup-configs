@@ -11,7 +11,7 @@
 <img src="https://img.shields.io/badge/RUNTIME-.NET_8_SINGLE_EXE-0A0B0C?style=flat-square&labelColor=131417" alt=".NET 8 Single File" />
 <img src="https://img.shields.io/badge/SAFETY-COPY--ONLY_%C2%B7_OFFLINE-0F243C?style=flat-square&labelColor=131417" alt="Copy-Only and Offline" />
 <img src="https://img.shields.io/badge/LANGUAGES-EN_%2F_PT--BR-0A0B0C?style=flat-square&labelColor=131417" alt="English and Portuguese" />
-<img src="https://img.shields.io/badge/RELEASE-v1.11.10-0159B3?style=flat-square&labelColor=131417" alt="Version 1.11.10" />
+<img src="https://img.shields.io/badge/RELEASE-v1.11.11-0159B3?style=flat-square&labelColor=131417" alt="Version 1.11.11" />
 <img src="https://img.shields.io/badge/LICENSE-MIT-131417?style=flat-square&labelColor=0A0B0C" alt="MIT License" />
 
 <br />
@@ -48,8 +48,8 @@ Cod Backup Configs is **100% file-based and copy-only**. It never injects into g
 
 - **Single Portable Executable** — Self-contained `.NET 8` win-x64 `.exe`. Embedded artwork, icons, and typography stay in memory — nothing is extracted next to the binary or left on disk.
 - **Auto-Detection Across Accounts** — Discovers detected numeric account directories under local Call of Duty `players` paths with one-click refresh and file/lock counters.
-- **Dated Copy-Only Snapshots** — Saves full account configuration folders into timestamped snapshots with optional custom labels. Original folders remain untouched.
-- **Cross-Account & Cross-Platform Migration** — Restore any saved snapshot into a different numeric account ID (e.g., Battle.net → Steam or fresh alt IDs), with an explicit toggle before overwriting existing files.
+- **Dated Copy-Only Presets** — Saves a full account configuration folder into a dated preset with an optional custom label. Original folders remain untouched.
+- **Cross-Account & Cross-Platform Migration** — Apply any saved preset to a different account picked from the destination dropdown (e.g., Battle.net → Steam), with an explicit toggle before overwriting existing files.
 - **One-Click Read-Only Lock** — Prevents game patches or crashes from resetting your tuned graphics and input. One click marks every settings file of the account (`s.1.0.*`, `g.cod25.*`, `g.cod26.*`, …) read-only — `.swp` swap files stay writable. Unlock anytime in one click.
 - **Live Language Switch** — Instant runtime switch between **English** and **Português (BR)** via top-right flags.
 
@@ -70,9 +70,9 @@ Cod Backup Configs is **100% file-based and copy-only**. It never injects into g
 1. Launch `Cod Backup Configs.exe` on **Windows 10 / 11 (64-bit)**.
 2. Select a detected game card (**BO6**, **BO7**, or **MW4**) — or click **choose folder…** if your `players` folder lives in a custom path.
 3. Pick an account from the list:
-   - **BACKUP ACCOUNT** — Saves a dated snapshot of the selected account.
-   - **RESTORE SNAPSHOT** — Pick a snapshot, verify the target numeric ID (or enter a new ID to stage a fresh profile), and restore.
-   - **LOCK SETTINGS / UNLOCK SETTINGS** — Toggles Windows `ReadOnly` on every settings file in that account (all `s.1.0.*`, `g.cod25.*`, `g.cod26.*` files; `.swp` swap files are left alone).
+   - **SAVE PRESET** — Saves the selected account's configs as a dated preset; it lands selected in the preset list right after, ready to apply.
+   - **APPLY PRESET** — Pick a preset, choose the account that receives it from the TO dropdown (it follows your list selection), and apply.
+   - **LOCK CONFIGS / UNLOCK CONFIGS** — Toggles Windows `ReadOnly` on every settings file in that account (all `s.1.0.*`, `g.cod25.*`, `g.cod26.*` files; `.swp` swap files are left alone).
 
 ---
 
@@ -82,7 +82,7 @@ Everything created by the app stays inside your local Windows user profile — n
 
 | Purpose | Local Path |
 | :--- | :--- |
-| **Snapshots** | `%LOCALAPPDATA%\CodBackupConfigs\backups\` |
+| **Presets** | `%LOCALAPPDATA%\CodBackupConfigs\backups\` |
 | **UI Preferences** | `%LOCALAPPDATA%\CodBackupConfigs\prefs.json` |
 
 ---

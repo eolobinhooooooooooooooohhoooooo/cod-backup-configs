@@ -39,10 +39,10 @@ namespace CodBackupConfig
         GameCard[] _cards;
         LineButton _btnRefresh, _btnBackup, _btnRestore, _btnLock, _btnPlayers, _btnBackups;
         TickBox _chkReplace;
-        TextBox _txtName, _txtTarget;
-        ChoiceBox _cbSnap;
+        TextBox _txtName;
+        ChoiceBox _cbSnap, _cbTarget;
         BorderPanel _listBorder, _savePanel, _restorePanel;
-        Label _saveTag, _saveHint, _saveNote, _restoreTag, _restoreHint;
+        Label _saveTag, _saveHint, _saveNote, _restoreTag, _restoreHint, _lblTo;
         Panel _footerLine;
         DarkListBox _lb;
         int _lbPrevSel = -1;
@@ -710,7 +710,7 @@ namespace CodBackupConfig
                 // previous row, leaving a ghost highlight until full activation
                 if (prev >= 0 && prev != cur) _lb.Invalidate();
                 var a = SelAcct();
-                if (a != null && !_txtTarget.Focused) _txtTarget.Text = a.Id;
+                SelectTarget(a?.Id);
                 UpdateLockButton();
                 UpdateSaveHint();
             };
@@ -767,18 +767,25 @@ namespace CodBackupConfig
             };
             _cbSnap.Changed += (i) =>
             {
-                if (!_txtTarget.Focused && i >= 0 && i < _snaps.Count)
-                    _txtTarget.Text = _snaps[i].AccountId;
+                // the preset's source becomes the destination by default
+                if (i >= 0 && i < _snaps.Count)
+                    SelectTarget(_snaps[i].AccountId);
             };
             _restorePanel.Controls.Add(_cbSnap);
             int tW = PANEL_W - 2 * PAD - 210 - 8;
-            _txtTarget = new TextBox
+            _lblTo = new Label
             {
-                Location = new Point(PAD, 84), Size = new Size(tW, 26),
-                BackColor = Ui.Panel, ForeColor = Ui.Text, Font = Ui.Num(9.5f),
-                BorderStyle = BorderStyle.FixedSingle,
+                AutoSize = false, AutoEllipsis = true, TextAlign = ContentAlignment.MiddleRight,
+                Font = Ui.Small, ForeColor = Ui.Faint, BackColor = Color.Transparent,
+                Location = new Point(PAD, 90), Size = new Size(32, 14),
             };
-            _restorePanel.Controls.Add(_txtTarget);
+            _restorePanel.Controls.Add(_lblTo);
+            _cbTarget = new ChoiceBox
+            {
+                Location = new Point(PAD + 36, 84), Size = new Size(tW - 36, 26),
+                Font = Ui.Body,
+            };
+            _restorePanel.Controls.Add(_cbTarget);
             _chkReplace = new TickBox
             {
                 Font = Ui.Small, BackColor = Ui.Panel,
@@ -971,12 +978,15 @@ namespace CodBackupConfig
             _cbSnap.Location = new Point(pad, Ui.X(50));
             _cbSnap.Size = new Size(inner, Ui.X(26));
 
-            // target id + replace checkbox share one row; the checkbox is
-            // measured from its real label so it never clips or leaves a
-            // dead zone and the textbox fills whatever is left
+            // destination dropdown + replace checkbox share one row; the TO
+            // marker keeps the copy direction explicit and the checkbox is
+            // measured from its real label so it never clips
             int chkW = ChkWidth(_chkReplace);
-            _txtTarget.Location = new Point(pad, Ui.X(84));
-            _txtTarget.Size = new Size(inner - chkW - igap, Ui.X(26));
+            int toW = Ui.X(36);
+            _lblTo.Location = new Point(pad, Ui.X(90));
+            _lblTo.Size = new Size(toW - Ui.X(4), Ui.X(14));
+            _cbTarget.Location = new Point(pad + toW, Ui.X(84));
+            _cbTarget.Size = new Size(inner - toW - igap - chkW, Ui.X(26));
             _chkReplace.Location = new Point(pad + inner - chkW, Ui.X(84));
             _chkReplace.Size = new Size(chkW, Ui.X(26));
             _btnRestore.Location = new Point(pad, Ui.X(BTN_Y));
@@ -1086,7 +1096,20 @@ namespace CodBackupConfig
             }
 
             var a = SelAcct();
-            if (a != null) _txtTarget.Text = a.Id;
+            // destination dropdown mirrors the account list: platform marks
+            // as icons, ids as text; keep the last choice when that account
+            // still exists, otherwise follow the list selection
+            string prevT = SelTargetId();
+            _cbTarget.Items.Clear();
+            var icons = new Bitmap[_accounts.Count];
+            for (int i = 0; i < _accounts.Count; i++)
+            {
+                _cbTarget.Items.Add(_accounts[i].Id);
+                icons[i] = PlatformMark(_accounts[i].Platform);
+            }
+            _cbTarget.Icons = icons;
+            SelectTarget(string.IsNullOrEmpty(prevT) ? a?.Id : prevT);
+            _cbTarget.Invalidate();
             UpdateLockButton();
             UpdateSaveHint();
             ApplyLayout();
@@ -1103,6 +1126,19 @@ namespace CodBackupConfig
             // icon matches the action the button will perform
             _btnLock.Text = T(locked ? "btn.lockoff" : "btn.lockon");
             _btnLock.Icon = Assets.Img(locked ? "ic-unlock.png" : "ic-lock.png");
+        }
+
+        string SelTargetId()
+        {
+            int ti = _cbTarget.SelectedIndex;
+            return ti >= 0 && ti < _accounts.Count ? _accounts[ti].Id : null;
+        }
+
+        void SelectTarget(string id)
+        {
+            if (id == null) return;
+            for (int i = 0; i < _cbTarget.Items.Count; i++)
+                if (_cbTarget.Items[i] == id) { _cbTarget.SelectedIndex = i; return; }
         }
 
         void PopulateSnapshots()
@@ -1160,6 +1196,12 @@ namespace CodBackupConfig
                 string dir = BackupStore.CreateSnapshot(g.Key, a.Dir, a.Id, label);
                 StatusOk(string.Format(T("st.backupok"), dir));
                 PopulateSnapshots();
+                // land on the preset that was just saved so the apply panel
+                // is ready for the next step
+                int ni = -1;
+                for (int k = 0; k < _snaps.Count; k++)
+                    if (string.Equals(_snaps[k].Dir, dir, StringComparison.OrdinalIgnoreCase)) { ni = k; break; }
+                _cbSnap.SelectedIndex = ni >= 0 ? ni : 0;
             }
             catch (Exception ex) { StatusErr(ex.Message); }
         }
@@ -1172,12 +1214,13 @@ namespace CodBackupConfig
             int i = _cbSnap.SelectedIndex;
             if (i < 0 || i >= _snaps.Count) { Status(T("st.nosnap")); return; }
 
-            string id = _txtTarget.Text.Trim();
-            if (id.Length < 6 || id.Any(c => c < '0' || c > '9'))
+            int ti = _cbTarget.SelectedIndex;
+            if (ti < 0 || ti >= _accounts.Count)
             {
                 Status(T("st.notarget"));
                 return;
             }
+            string id = _accounts[ti].Id;
 
             try
             {
@@ -1283,10 +1326,12 @@ namespace CodBackupConfig
             _restoreHint.Text = T("sec.restore.hint");
             _saveNote.Text = T("sec.save.note");
             _txtName.PlaceholderText = T("ph.name");
-            _txtTarget.PlaceholderText = T("ph.target");
+            _lblTo.Text = T("lbl.to");
+            _cbTarget.Placeholder = T("ph.none");
             _chkReplace.Text = T("chk.replace");
             _cbSnap.Placeholder = T("ph.none");
             _cbSnap.Invalidate();
+            _cbTarget.Invalidate();
 
             FillList();
             PopulateSnapshots();
@@ -1304,7 +1349,7 @@ namespace CodBackupConfig
             Tip(_btnBackups, "tip.backups");
             Tip(_txtName, "tip.name");
             Tip(_cbSnap, "tip.snapshot");
-            Tip(_txtTarget, "tip.target");
+            Tip(_cbTarget, "tip.target");
             Tip(_chkReplace, "tip.replace");
             Tip(_lb, "list.tip");
             for (int i = 0; i < _cards.Length; i++)

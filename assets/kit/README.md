@@ -40,9 +40,9 @@ Recommended draw size on buttons: `14x14` or `16x16` (`InterpolationMode.HighQua
 ### 5. Official Activision Hitmarker Fonts (`fonts/*.ttf`)
 Downloaded from Activision's official brand portal (`https://brand.callofduty.com/typography/typeface` -> `https://www.callofduty.com/cdn/brand/HitmarkerFonts.zip`).
 
-| File | Verified GDI+ Family Name | Shipped role (v1.11.10) |
+| File | Verified GDI+ Family Name | Shipped role (v1.11.11) |
 |---|---|---|
-| `HitmarkerCondensed-Bold.ttf` | `Hitmarker Condensed` | Window title, section headers (`GAME`, `ACCOUNTS`, `BACKUPS`), button caps |
+| `HitmarkerCondensed-Bold.ttf` | `Hitmarker Condensed` | Window title, section headers (`GAME`, `ACCOUNTS`, `PRESETS`), button caps |
 | `HitmarkerNormal-Bold.ttf` | `Hitmarker Normal` | Game names on the account cards |
 | `HitmarkerNormal-Regular.ttf` | `Hitmarker Normal` | Registered spare (normal-weight name text) |
 | `HitmarkerText-Regular.ttf` | `Hitmarker Text` | Labels, hints, body text, status, tooltips |
