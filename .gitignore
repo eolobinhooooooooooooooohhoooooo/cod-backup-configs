@@ -17,3 +17,7 @@ TestResults/
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# internal work notes — stay on this machine
+/docs/PLAN.md
+/docs/RESEARCH.md

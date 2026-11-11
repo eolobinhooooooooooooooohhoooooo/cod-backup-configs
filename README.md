@@ -110,8 +110,6 @@ Output binary: `dist\Cod Backup Configs.exe` (single file, no `.pdb` sidecar).
 ## 📚 Documentation & Credits
 
 - [`CHANGELOG.md`](CHANGELOG.md) — release history, date-encoded tags (`v1.11.10`, …)
-- [`docs/PLAN.md`](docs/PLAN.md) — Detection rules, copy guarantees, and UI layout spec
-- [`docs/RESEARCH.md`](docs/RESEARCH.md) — Path layout and config filename references
 - [`assets/SOURCES.md`](assets/SOURCES.md) · [`assets/spec/`](assets/spec/) — Embedded art provenance and visual tokens
 
 ---
