@@ -17,9 +17,17 @@ namespace CodBackupConfig
     // copy-only store. no moves, no deletes, ever.
     public static class BackupStore
     {
-        public static string Root =>
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                         "CodBackupConfigs");
+        // getfolderpath reads the registry, not the %localappdata% env var;
+        // honor the env var like codpaths does so both roots stay consistent.
+        public static string Root => Path.Combine(LocalAppData(), "CodBackupConfigs");
+
+        static string LocalAppData()
+        {
+            string v = Environment.GetEnvironmentVariable("LOCALAPPDATA");
+            return string.IsNullOrEmpty(v)
+                ? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
+                : v;
+        }
 
         public static string BackupsRoot => Path.Combine(Root, "backups");
 
