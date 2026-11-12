@@ -5,6 +5,24 @@ valid SemVer): each tag (`v1.11.10`, …) marks a published release of the
 single-file exe. The v-badge in the app reads the assembly version, so the
 header always matches the build.
 
+## [1.11.12] - 2026-11-12
+
+Full config coverage — presets, counts and locking now match how the game
+actually stores files:
+
+- Presets are recursive: every subfolder of the account is saved, including
+  campaign `sp*` save folders. Shader caches (`shadercache`, `xpak_cache`)
+  are skipped — the game regenerates them on launch.
+- Settings files the game keeps loose in the players root itself (MW4 keeps
+  `s.1.0.cod26.txt` there) are now counted per account, stored inside the
+  preset under a `root\` subfolder, and restored back to the players root.
+- Lock/unlock recurses into the account's subfolders and covers the shared
+  root files as well. Campaign `sp*` save folders are never locked — locking
+  saves has been reported as a cause of lost campaign progress.
+- Old flat presets remain fully restorable.
+- The app's assembly identity was stale at `1.11.10.0`; the version badge in
+  the header now matches the real build version.
+
 ## [1.11.11] - 2026-11-11
 
 Plain-language preset workflow:

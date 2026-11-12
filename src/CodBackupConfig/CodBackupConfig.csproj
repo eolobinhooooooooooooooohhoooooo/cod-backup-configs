@@ -11,7 +11,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>..\..\assets\kit\icon.ico</ApplicationIcon>
     <!-- date-encoded releases: 1.MM.DD (release month.day), valid SemVer -->
-    <Version>1.11.11</Version>
+    <Version>1.11.12</Version>
     <Product>Cod Backup Configs</Product>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
     <!-- no pdb next to the exe, ever -->

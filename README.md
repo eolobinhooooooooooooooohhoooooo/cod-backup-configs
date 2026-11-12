@@ -11,7 +11,7 @@
 <img src="https://img.shields.io/badge/RUNTIME-.NET_8_SINGLE_EXE-0A0B0C?style=flat-square&labelColor=131417" alt=".NET 8 Single File" />
 <img src="https://img.shields.io/badge/SAFETY-COPY--ONLY_%C2%B7_OFFLINE-0F243C?style=flat-square&labelColor=131417" alt="Copy-Only and Offline" />
 <img src="https://img.shields.io/badge/LANGUAGES-EN_%2F_PT--BR-0A0B0C?style=flat-square&labelColor=131417" alt="English and Portuguese" />
-<img src="https://img.shields.io/badge/RELEASE-v1.11.11-0159B3?style=flat-square&labelColor=131417" alt="Version 1.11.11" />
+<img src="https://img.shields.io/badge/RELEASE-v1.11.12-0159B3?style=flat-square&labelColor=131417" alt="Version 1.11.12" />
 <img src="https://img.shields.io/badge/LICENSE-MIT-131417?style=flat-square&labelColor=0A0B0C" alt="MIT License" />
 
 <br />
@@ -40,7 +40,7 @@ Cod Backup Configs is **100% file-based and copy-only**. It never injects into g
 | :--- | :--- | :--- |
 | **Call of Duty Titles** | **Black Ops 6** · **Black Ops 7** · **Modern Warfare 4** | Auto-detects `players` directories per title + manual folder picker fallback. MW4 is active in this release; BO6/BO7 show grayed out, unclickable |
 | **PC Storefronts** | **Battle.net** · **Steam** · **Xbox PC** | Platform inferred from numeric account ID shape (`SteamID64`, `Battle.net`, Xbox) |
-| **Protected Configs** | Every settings file of an account (`.swp` swap files excluded) | Instant `ReadOnly` attribute toggle across all account files — `s.1.0.*`, `g.cod25.*`, `g.cod26.*`, whatever the title names them |
+| **Protected Configs** | Every settings file of an account plus the shared configs kept in the players root (`.swp` swap files excluded; campaign `sp*` save folders always stay writable) | Instant `ReadOnly` attribute toggle across the whole account tree, subfolders included — `s.1.0.*`, `g.cod25.*`, `g.cod26.*`, whatever the title names them |
 
 ---
 
@@ -50,7 +50,7 @@ Cod Backup Configs is **100% file-based and copy-only**. It never injects into g
 - **Auto-Detection Across Accounts** — Finds numeric account directories under local Call of Duty `players` paths with one-click refresh and file/lock counters.
 - **Dated Copy-Only Presets** — Saves a full account configuration folder into a dated preset with an optional custom label. Original folders remain untouched.
 - **Cross-Account & Cross-Platform Migration** — Apply any saved preset to a different account picked from the destination dropdown (e.g., Battle.net → Steam), with an explicit toggle before overwriting existing files.
-- **One-Click Read-Only Lock** — Prevents game patches or crashes from resetting your tuned graphics and input. One click marks every settings file of the account (`s.1.0.*`, `g.cod25.*`, `g.cod26.*`, …) read-only — `.swp` swap files stay writable. Unlock anytime in one click.
+- **One-Click Read-Only Lock** — Prevents game patches or crashes from resetting your tuned graphics and input. One click marks every settings file of the account, subfolders included, plus the shared configs in the players root (`s.1.0.*`, `g.cod25.*`, `g.cod26.*`, …) read-only — `.swp` swap files and campaign `sp*` save folders stay writable. Unlock anytime in one click.
 - **Live Language Switch** — Instant runtime switch between **English** and **Português (BR)** via top-right flags.
 
 ---
@@ -67,12 +67,13 @@ Cod Backup Configs is **100% file-based and copy-only**. It never injects into g
 
 ## 🚀 Quick Start
 
-1. Launch `Cod Backup Configs.exe` on **Windows 10 / 11 (64-bit)**.
-2. Select the game card (**MW4** — **BO6**/**BO7** show grayed out in this release) — or click **choose folder…** if your `players` folder lives in a custom path.
-3. Pick an account from the list:
-   - **SAVE PRESET** — Saves the selected account's configs as a dated preset; it lands selected in the preset list right after, ready to apply.
+1. Get the exe: download `Cod Backup Configs.exe` from [Releases](https://github.com/eolobinhooooooooooooooohhoooooo/cod-backup-configs/releases), or build it yourself ([below](#building-from-source)).
+2. Launch `Cod Backup Configs.exe` on **Windows 10 / 11 (64-bit)**. No install, no admin rights, works fully offline. The exe is unsigned, so on first run Windows may show a SmartScreen notice — choose **More info → Run**.
+3. Select the game card (**MW4** — **BO6**/**BO7** show grayed out in this release) — or click **choose folder…** if your `players` folder lives in a custom path.
+4. Pick an account from the list:
+   - **SAVE PRESET** — Saves the selected account's configs as a dated preset (subfolders and the shared players-root configs included, shader caches skipped); it lands selected in the preset list right after, ready to apply.
    - **APPLY PRESET** — Pick a preset, choose the account that receives it from the TO dropdown (it follows your list selection), and apply.
-   - **LOCK CONFIGS / UNLOCK CONFIGS** — Toggles Windows `ReadOnly` on every settings file in that account (all `s.1.0.*`, `g.cod25.*`, `g.cod26.*` files; `.swp` swap files are left alone).
+   - **LOCK CONFIGS / UNLOCK CONFIGS** — Toggles Windows `ReadOnly` on every settings file in that account, subfolders and shared root files included (all `s.1.0.*`, `g.cod25.*`, `g.cod26.*` files; `.swp` swap files and campaign `sp*` save folders are left writable).
 
 ---
 
