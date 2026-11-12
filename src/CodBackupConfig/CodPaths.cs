@@ -114,38 +114,108 @@ namespace CodBackupConfig
         public static bool IsSettingsFile(string fileName) =>
             !fileName.EndsWith(".swp", StringComparison.OrdinalIgnoreCase);
 
+        // shader/xpak caches: the game regenerates them on launch, so they
+        // are never backed up and never shown in counts
+        public static bool IsCacheDir(string dirName)
+        {
+            string n = dirName.ToLowerInvariant();
+            return n == "shadercache" || n == "xpak_cache";
+        }
+
+        // campaign save folder (sp1, sp12, ...): backed up with the
+        // account, but never read-only-locked — locking saves has been
+        // reported as a cause of lost campaign progress
+        public static bool IsSaveDir(string dirName)
+        {
+            if (dirName.Length < 3 || !dirName.StartsWith("sp", StringComparison.OrdinalIgnoreCase))
+                return false;
+            for (int i = 2; i < dirName.Length; i++)
+                if (dirName[i] < '0' || dirName[i] > '9') return false;
+            return true;
+        }
+
+        // every file under an account folder, top level included, with the
+        // relative layout intact. cache folders are always skipped; save
+        // folders (sp*) only when includeSaves is false. one folder failing
+        // mid-scan (the game may hold it open) is dropped, not fatal
+        public static List<string> EnumerateFiles(string dir, bool includeSaves)
+        {
+            var files = new List<string>();
+            if (!Directory.Exists(dir)) return files;
+            var stack = new Stack<string>();
+            stack.Push(dir);
+            while (stack.Count > 0)
+            {
+                string cur = stack.Pop();
+                try
+                {
+                    foreach (string f in Directory.GetFiles(cur)) files.Add(f);
+                    foreach (string d in Directory.GetDirectories(cur))
+                    {
+                        string n = Path.GetFileName(d);
+                        if (IsCacheDir(n)) continue;
+                        if (!includeSaves && IsSaveDir(n)) continue;
+                        stack.Push(d);
+                    }
+                }
+                catch { }
+            }
+            return files;
+        }
+
+        // settings files the game keeps loose in the players root itself
+        // (mw4 keeps s.1.0.cod26.txt there): shared between accounts, so
+        // counts, snapshots and the lock all include them
+        public static List<string> ListRootSettingsFiles(string root)
+        {
+            var files = new List<string>();
+            if (string.IsNullOrEmpty(root) || !Directory.Exists(root)) return files;
+            try
+            {
+                foreach (string f in Directory.GetFiles(root))
+                    if (IsSettingsFile(Path.GetFileName(f))) files.Add(f);
+            }
+            catch { }
+            return files;
+        }
+
         public static List<Account> ListAccounts(string root)
         {
             var list = new List<Account>();
+            List<string> rootFiles = null; // lazy: computed once, shared by every row
+            int rootLocked = 0;
             try
             {
                 foreach (string dir in Directory.GetDirectories(root))
                 {
                     if (!IsAccountDir(dir)) continue;
                     string id = Path.GetFileName(dir);
-                    int files = 0, settings = 0, locked = 0;
-                    try
+                    List<string> files = EnumerateFiles(dir, includeSaves: true);
+                    int settings = 0, locked = 0;
+                    foreach (string f in files)
                     {
-                        foreach (string f in Directory.GetFiles(dir))
-                        {
-                            files++;
-                            // lock state is tracked on the settings files
-                            // only; .swp swap files mean nothing here
-                            if (IsSettingsFile(Path.GetFileName(f)))
-                            {
-                                settings++;
-                                if ((File.GetAttributes(f) & FileAttributes.ReadOnly) != 0) locked++;
-                            }
-                        }
+                        // lock state is tracked on the settings files only;
+                        // .swp swap files mean nothing here
+                        if (!IsSettingsFile(Path.GetFileName(f))) continue;
+                        settings++;
+                        // save folders (sp*) never participate in the lock,
+                        // so their read-only state doesn't count as locked
+                        if (IsSaveDir(Path.GetFileName(Path.GetDirectoryName(f)))) continue;
+                        if ((File.GetAttributes(f) & FileAttributes.ReadOnly) != 0) locked++;
                     }
-                    catch { }
+                    if (rootFiles == null)
+                    {
+                        rootFiles = ListRootSettingsFiles(root);
+                        foreach (string f in rootFiles)
+                            if ((File.GetAttributes(f) & FileAttributes.ReadOnly) != 0) rootLocked++;
+                    }
                     list.Add(new Account
                     {
                         Id = id,
                         Dir = dir,
-                        FileCount = files,
-                        SettingsCount = settings,
-                        LockedCount = locked,
+                        FileCount = files.Count + rootFiles.Count,
+                        SettingsCount = settings + rootFiles.Count,
+                        LockedCount = locked + rootLocked,
                         Platform = GuessPlatform(id),
                     });
                 }

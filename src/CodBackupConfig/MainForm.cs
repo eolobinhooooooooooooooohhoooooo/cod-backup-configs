@@ -1195,7 +1195,7 @@ namespace CodBackupConfig
 
             try
             {
-                string dir = BackupStore.CreateSnapshot(g.Key, a.Dir, a.Id, label);
+                string dir = BackupStore.CreateSnapshot(g.Key, a.Dir, g.Resolved, a.Id, label);
                 StatusOk(string.Format(T("st.backupok"), dir));
                 PopulateSnapshots();
                 // land on the preset that was just saved so the apply panel
@@ -1228,7 +1228,7 @@ namespace CodBackupConfig
             {
                 string target = Path.Combine(g.Resolved, id);
                 bool made = !Directory.Exists(target);
-                var r = BackupStore.Restore(_snaps[i].Dir, target, _chkReplace.Checked);
+                var r = BackupStore.Restore(_snaps[i].Dir, target, g.Resolved, _chkReplace.Checked);
                 string msg = string.Format(T("st.restoreok"), r.copied, r.skipped);
                 if (made) msg += " · " + T("st.made");
                 StatusOk(msg);
@@ -1243,7 +1243,7 @@ namespace CodBackupConfig
             if (a == null) { Status(T("st.noacct")); return; }
             try
             {
-                var res = BackupStore.ToggleSettingsLock(a.Dir);
+                var res = BackupStore.ToggleSettingsLock(a.Dir, SelGame()?.Resolved);
                 if (res.count == 0) { Status(T("st.nosettings")); return; }
                 StatusOk(string.Format(T(res.lockedNow ? "st.lockon" : "st.lockoff"), res.count));
                 Rescan();
